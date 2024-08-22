@@ -1,4 +1,3 @@
-import datetime
 import logging
 from collections import OrderedDict
 import numpy as np
@@ -83,6 +82,3 @@ def test_get_array_all():
         a = qd.tiledb_get_array(A)
         logging.info(a)
     logging.info("")
-
-    
-#     logging.info(qd.tiledb_get_array(array_bars_stock_daily))

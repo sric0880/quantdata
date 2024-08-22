@@ -178,8 +178,8 @@ def tiledb_open_array(uri, ctx=None):
 
 
 def tiledb_get_array_shape(A):
-    end = A.nonempty_domain()[1]
-    return (end[0] + 1, end[1] + 1)
+    """默认开头没有空"""
+    return tuple(b + 1 for _, b in A.nonempty_domain())
 
 
 def tiledb_get_array(A, query: dict = None, indexer: dict = None):
@@ -191,6 +191,8 @@ def tiledb_get_array(A, query: dict = None, indexer: dict = None):
         - 切片表示 tuple or slice()，如果开头结尾使用None，表示最后不为空的位置，如果有None必须用slice()否则报错（这是tiledb的BUG）
         - list表示multi range, list中可以嵌套单点和切片
         - 剩下表示单点查询
+
+    注意：返回的array中可能有空cell
     """
     q = None
     if query is not None:
