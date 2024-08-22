@@ -1,10 +1,11 @@
 import logging
 from collections import OrderedDict
+
 import numpy as np
 
 import quantdata as qd
 
-tiledb_bucket = "~/WorkingDoc/tiledb/finance-tiledb"
+tiledb_bucket = "datas/finance-tiledb"
 cn_stock = 'cn_stock'
 cn_stock_group_name = f"{tiledb_bucket}/{cn_stock}"
 array_bars_stock_daily = f"{cn_stock_group_name}/bars/daily"
