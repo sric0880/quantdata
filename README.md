@@ -6,7 +6,12 @@
 - 1维数据，按行存储的数据，使用MongoDB
 - 2维数据，按列存储的数据，一个时间维度，一个Symbols维度，使用Tiledb，用于tick数据和K线数据
 
-## 使用
+## Tiledb限制
+
+- symbols按行存储，由于symbols必须排序，当需要动态插入一行时，很难用优雅的方式实现。
+- Tiledb 底层有随机出现的bug，见`setup_db.ipynb`
+
+## 启动MongoDB
 
 修改`docker-compose.yaml`中的用户名和密码，控制台输入 `docker-compose up -d`
 
@@ -48,6 +53,3 @@ TileDB可以直接通过访问共享文件夹实现远程获取，其性能和lo
 
 1. compression空间减少5倍
 2. 当本地读取IO已经不是瓶颈，反而解压更费时间
-
-## TODO
-- 定期合并fragments
