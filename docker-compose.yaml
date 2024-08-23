@@ -24,6 +24,19 @@ services:
       - 6041:6041
       - 6043-6049:6043-6049
       - 6043-6049:6043-6049/udp
+  clickhouse:
+    image: clickhouse/clickhouse-server
+    restart: always
+    ports:
+      - 8123:8123 # for http API
+      - 9000:9000 # for native client
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      # - ./datas/clickhouse:/var/lib/clickhouse/ # 不能映射，写入权限有BUG，见setup_db.ipynb
+      - ./logs/clickhouse:/var/log/clickhouse-server/
   mongo:
     image: mongo
     restart: always
