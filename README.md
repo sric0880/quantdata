@@ -1,7 +1,7 @@
 作者个人使用项目，这里只提供数据库结构，简单的导入流程，具体数据需要自己采集和拉取。还包括数据库客户端接入API
 
 依赖库: ~~[MinIO](https://min.io/)（[Github](https://github.com/minio/minio)）~~、[Tiledb](https://tiledb.com/open-source/array-storage/)、
- [Mongodb](https://www.mongodb.com)
+ [Mongodb](https://www.mongodb.com) [Clickhouse](https://clickhouse.com/)
 
 - 1维数据，按行存储的数据，使用MongoDB
 - 2维数据，按列存储的数据，一个时间维度，一个Symbols维度，使用Tiledb，用于tick数据和K线数据
@@ -30,7 +30,7 @@ TDengine对于不同的切片查询方式，需要写不同的SQL语句，按行
 
 TileDB可以直接通过访问共享文件夹实现远程获取，其性能和local几乎相等，完全满足在本地局域网内建库的需求。
 
-所有测试均在同一机器测试，只看相对值。
+所有测试均在同一机器测试，只看相对值。绝对值不同机器配置，影响较大。
 
 - 拉取 stocks_basic_info
 
@@ -44,12 +44,19 @@ TileDB可以直接通过访问共享文件夹实现远程获取，其性能和lo
 
 |-|47个属性|3个属性|
 |--|--|--|
-|TDengine|768 ms ± 28.8 ms|187 ms ± 2.15 ms|
-|Tiledb(minio)|560 ms ± 17.7 ms|-||
+|TDengine|404 ms ± 25.7 ms|57.1 ms ± 848 µs|
+|TDengine(40G)|720 ms ± 13.4 ms|168 ms ± 599 µs|
+
+1. TDengine随着存入数据量的增大，查询性能会有下降，尤其当查询少量字段时，性能下降了3倍。
+
+|-|47个属性|3个属性|
+|--|--|--|
+|TDengine|402 ms ± 19.9 ms|57.1 ms ± 848 µs|
+|Tiledb(minio)|560 ms ± 17.7 ms|-|
 |Tiledb(minio+compression)|519 ms ± 28.8 ms|35.1 ms ± 1.92 ms|
 |Tiledb(local)|12.6 ms ± 298 µs|-|
 |Tiledb(local+compression)|16.3 ms ± 537 µs|-|
 |dataframe pickle(local)|2.53 ms ± 556 µs|--|
 
-1. compression空间减少5倍
-2. 当本地读取IO已经不是瓶颈，反而解压更费时间
+1. tiledb compression空间减少5倍
+2. tiledb本地读取IO已经不是瓶颈，反而解压更费时间

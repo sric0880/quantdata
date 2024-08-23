@@ -1,4 +1,29 @@
 services:
+  # minio:
+  #   restart: always
+  #   image: quay.io/minio/minio
+  #   environment:
+  #     MINIO_ROOT_USER: ROOTNAME
+  #     MINIO_ROOT_PASSWORD: CHANGEME123
+  #   volumes:
+  #     - ./datas/finance-tiledb:/data
+  #   ports:
+  #     - 9000:9000
+  #     - 9001:9001
+  #   command: server /data --console-address ":9001"
+  tdengine:
+    restart: always
+    image: tdengine/tdengine:3.0.3.0
+    environment:
+      TAOS_FQDN: tdengine
+    volumes:
+      - ./datas/tdengine:/var/lib/taos/
+      - ./etc/tdengine:/etc/taos/
+    ports:
+      - 6030:6030
+      - 6041:6041
+      - 6043-6049:6043-6049
+      - 6043-6049:6043-6049/udp
   mongo:
     image: mongo
     restart: always
