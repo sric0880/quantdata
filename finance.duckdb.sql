@@ -1,5 +1,4 @@
-.open datas/duckdb/finance.db
-drop table bars_daily;
+-- drop table bars_daily;
 CREATE TABLE IF NOT EXISTS bars_daily AS
     SELECT * FROM read_csv('datasources/data.csv', header=true, columns = {
         "dt":"TIMESTAMP_S",
@@ -51,4 +50,3 @@ CREATE TABLE IF NOT EXISTS bars_daily AS
         "high":"FLOAT",
         "low":"FLOAT"
     });
-DESCRIBE bars_daily;
