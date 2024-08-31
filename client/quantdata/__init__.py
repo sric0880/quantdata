@@ -1,9 +1,17 @@
 import datetime
-import tiledb
 from contextlib import contextmanager
 
-from tiledb.multirange_indexing import LabelIndexer
-from tiledb.multirange_indexing import MultiRangeIndexer
+try:
+    import tiledb
+    from tiledb.multirange_indexing import LabelIndexer, MultiRangeIndexer
+except ImportError:
+    pass
+
+try:
+    import duckdb
+except ImportError:
+    pass
+
 from pymongo import MongoClient
 from pymongo.database import Database
 
@@ -16,9 +24,12 @@ __all__ = [
     "tiledb_get_attrs",
     "tiledb_get_symbols",
     "tiledb_get_datetimes",
-    "tiledb_open_array",
+    "tiledb_connect",
     "tiledb_get_array_shape",
     "tiledb_get_array",
+    "duckdb_connect",
+    "duckdb_get_array",
+    "duckdb_get_array_last_rows",
 ]
 
 
@@ -33,7 +44,7 @@ def mongo_connect(host, port=27017, user="root", password="admin", **kwargs):
         password=password,
         authSource=authSource,
         authMechanism=authMechanism,
-        **kwargs
+        **kwargs,
     )
     try:
         yield client
@@ -47,7 +58,7 @@ def mongo_get_data(
     query: dict = None,
     sort_by: dict = None,
     max_count=None,
-    **find_kwargs
+    **find_kwargs,
 ):
     """
     如果要返回DataFrame，可以用`df = pd.DataFrame(returned cursor)`
@@ -169,7 +180,12 @@ def tiledb_get_datetimes(uri: str) -> list:
 
 
 @contextmanager
-def tiledb_open_array(uri, ctx=None):
+def tiledb_connect(uri, ctx=None):
+    """
+    打开一个文件链接
+
+    ctx 用于参数设置，None使用默认参数
+    """
     A = tiledb.open(uri, mode="r", ctx=ctx or _default_ctx)
     try:
         yield A
@@ -206,3 +222,41 @@ def tiledb_get_array(A, query: dict = None, indexer: dict = None):
         return q.multi_index[None:None, None:None]
     else:
         return A.multi_index[None:None, None:None]
+
+
+@contextmanager
+def duckdb_connect(uri):
+    conn = duckdb.connect()
+    try:
+        conn.execute(f"ATTACH '{uri}' as A (READ_ONLY)")
+        try:
+            yield conn
+        finally:
+            conn.execute("DETACH A")
+    except:
+        raise
+    finally:
+        conn.close()
+
+
+def duckdb_get_array(conn, tablename, attrs: list = None, filter: str = None):
+    names = ",".join(attrs) if attrs else "*"
+    q = conn.sql(f"select {names} from A.{tablename}")
+    if filter:
+        q = q.filter(filter)
+    return q
+
+
+def duckdb_get_array_last_rows(conn, tablename: str, attrs: list = None, N: int = 1):
+    if N == 1:
+        if not attrs:
+            return conn.sql(f"select last(COLUMNS(*)) from A.{tablename}")
+        else:
+            field_name = "last({a}) as {a}"
+            names = ",".join(field_name.format(a=attr) for attr in attrs)
+            return conn.sql(f"select {names} from A.{tablename}")
+    else:
+        names = ",".join(attrs) if attrs else "*"
+        return conn.sql(
+            f"SELECT * FROM (select {names} from A.{tablename} ORDER BY dt DESC LIMIT {N}) ORDER BY dt ASC;"
+        )
