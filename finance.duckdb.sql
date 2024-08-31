@@ -1,6 +1,5 @@
--- drop table bars_daily;
-CREATE TABLE IF NOT EXISTS bars_daily AS
-    SELECT * FROM read_csv('datasources/data.csv', header=true, columns = {
+CREATE TABLE IF NOT EXISTS bars_daily_{tablename} AS
+    SELECT * FROM read_csv('datasources/{symbol}.csv', header=true, columns = {{
         "dt":"TIMESTAMP_S",
         "name":"VARCHAR",
         "_open":"FLOAT",
@@ -49,4 +48,4 @@ CREATE TABLE IF NOT EXISTS bars_daily AS
         "open":"FLOAT",
         "high":"FLOAT",
         "low":"FLOAT"
-    });
+    }});

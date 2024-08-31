@@ -1,5 +1,4 @@
 import datetime
-from contextlib import contextmanager
 
 try:
     import tiledb
@@ -17,6 +16,7 @@ from pymongo.database import Database
 
 __all__ = [
     "mongo_connect",
+    "mongo_close",
     "mongo_get_data",
     "mongo_get_last_trade_dt",
     "mongo_get_next_trade_dt",
@@ -25,19 +25,20 @@ __all__ = [
     "tiledb_get_symbols",
     "tiledb_get_datetimes",
     "tiledb_connect",
+    "tiledb_close",
     "tiledb_get_array_shape",
     "tiledb_get_array",
     "duckdb_connect",
+    "duckdb_close",
     "duckdb_get_array",
     "duckdb_get_array_last_rows",
 ]
 
 
-@contextmanager
 def mongo_connect(host, port=27017, user="root", password="admin", **kwargs):
     authSource = kwargs.pop("authSource", "admin")
     authMechanism = kwargs.pop("authMechanism", "SCRAM-SHA-1")
-    client = MongoClient(
+    return MongoClient(
         host=host,
         port=port,
         username=user,
@@ -46,10 +47,10 @@ def mongo_connect(host, port=27017, user="root", password="admin", **kwargs):
         authMechanism=authMechanism,
         **kwargs,
     )
-    try:
-        yield client
-    finally:
-        client.close()
+
+
+def mongo_close(client):
+    client.close()
 
 
 def mongo_get_data(
@@ -179,18 +180,17 @@ def tiledb_get_datetimes(uri: str) -> list:
         return dt_arr[ned[0] : ned[1] + 1][dim_dt.label_attr_name]
 
 
-@contextmanager
 def tiledb_connect(uri, ctx=None):
     """
     打开一个文件链接
 
     ctx 用于参数设置，None使用默认参数
     """
-    A = tiledb.open(uri, mode="r", ctx=ctx or _default_ctx)
-    try:
-        yield A
-    finally:
-        A.close()
+    return tiledb.open(uri, mode="r", ctx=ctx or _default_ctx)
+
+
+def tiledb_close(A):
+    A.close()
 
 
 def tiledb_get_array_shape(A):
@@ -224,17 +224,19 @@ def tiledb_get_array(A, query: dict = None, indexer: dict = None):
         return A.multi_index[None:None, None:None]
 
 
-@contextmanager
 def duckdb_connect(uri):
     conn = duckdb.connect()
     try:
         conn.execute(f"ATTACH '{uri}' as A (READ_ONLY)")
-        try:
-            yield conn
-        finally:
-            conn.execute("DETACH A")
+        return conn
     except:
+        conn.close()
         raise
+
+
+def duckdb_close(conn):
+    try:
+        conn.execute("DETACH A")
     finally:
         conn.close()
 
@@ -248,15 +250,21 @@ def duckdb_get_array(conn, tablename, attrs: list = None, filter: str = None):
 
 
 def duckdb_get_array_last_rows(conn, tablename: str, attrs: list = None, N: int = 1):
-    if N == 1:
-        if not attrs:
-            return conn.sql(f"select last(COLUMNS(*)) from A.{tablename}")
-        else:
-            field_name = "last({a}) as {a}"
-            names = ",".join(field_name.format(a=attr) for attr in attrs)
-            return conn.sql(f"select {names} from A.{tablename}")
-    else:
-        names = ",".join(attrs) if attrs else "*"
-        return conn.sql(
-            f"SELECT * FROM (select {names} from A.{tablename} ORDER BY dt DESC LIMIT {N}) ORDER BY dt ASC;"
-        )
+    count = conn.sql(f'SELECT count(*) from A.{tablename}').fetchone()[0]
+    names = ",".join(attrs) if attrs else "*"
+    return conn.sql(
+        f"SELECT {names} FROM A.{tablename} LIMIT {N} OFFSET {count-N};"
+    )
+    # 返回全部行只要8ms的情况下，常规做法读取最后一行，竟然要16ms
+    # if N == 1:
+    #     if not attrs:
+    #         return conn.sql(f"select last(COLUMNS(*)) from A.{tablename}")
+    #     else:
+    #         field_name = "last({a}) as {a}"
+    #         names = ",".join(field_name.format(a=attr) for attr in attrs)
+    #         return conn.sql(f"select {names} from A.{tablename}")
+    # else:
+    #     names = ",".join(attrs) if attrs else "*"
+    #     return conn.sql(
+    #         f"SELECT * FROM (select {names} from A.{tablename} ORDER BY dt DESC LIMIT {N}) ORDER BY dt ASC;"
+    #     )
