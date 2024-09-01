@@ -225,13 +225,7 @@ def tiledb_get_array(A, query: dict = None, indexer: dict = None):
 
 
 def duckdb_connect(uri):
-    conn = duckdb.connect()
-    try:
-        conn.execute(f"ATTACH '{uri}' as A (READ_ONLY);USE A;")
-        return conn
-    except:
-        conn.close()
-        raise
+    return duckdb.execute(f"ATTACH '{uri}' as A (READ_ONLY);USE A;")
 
 
 def duckdb_close(conn):

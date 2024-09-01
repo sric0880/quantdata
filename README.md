@@ -40,24 +40,19 @@
 
 |-|47个属性|3个属性|
 |--|--|--|
-|TDengine|404 ms ± 25.7 ms|57.1 ms ± 848 µs|
-|TDengine(40G)|720 ms ± 13.4 ms|168 ms ± 599 µs|
-
-- TDengine随着存入数据量的增大，查询性能会有下降，尤其当查询少量字段时，性能下降了3倍。
-
-|-|47个属性|3个属性|
-|--|--|--|
 |TDengine(server)|402 ms ± 19.9 ms|57.1 ms ± 848 µs|
+|TDengine(server+40G)|720 ms ± 13.4 ms|168 ms ± 599 µs|
 |Tiledb(minio)|560 ms ± 17.7 ms|-|
 |Tiledb(minio+compression)|519 ms ± 28.8 ms|35.1 ms ± 1.92 ms|
 |Tiledb(local)|12.6 ms ± 298 µs|-|
 |Tiledb(local+compression)|16.3 ms ± 537 µs|-|
 |Clickhouse(server)|83.9 ms ± 1.64 ms|53.3 ms ± 3.21 ms|
-|Duckdb(local)|7.81 ms ± 507 µs|1.49 ms ± 114 µs|
-|**Duckdb(local network)**|9.38 ms ± 905 µs|3.54 ms ± 300 µs|
+|Duckdb(local+5G)|5.76 ms ± 118 µs|1.23 ms ± 33 µs|
+|**Duckdb(local network+5G)**|7.48 ms ± 454 µs|1.64 ms ± 70.5 µs|
 |pd.Dataframe pickle(local)|2.53 ms ± 556 µs|--|
 
 - Tiledb compression 空间减少5倍，在MinIO上网络传输减少，延迟稍有下降，Tiledb本地读取IO已经不是瓶颈，反而解压更费时间。
+- TDengine随着存入数据量的增大，查询性能会有下降，尤其当查询少量字段时，性能下降了3倍。
 
 ## TDengine
 
@@ -83,11 +78,7 @@ A.label_index(["symbol","dt"])["000001.SZ", np.datetime64('2023-04-29', 'D'):np.
 
 ## Duckdb
 
-- 通过ATTACH和DETACH可以实现共享文件夹远程访问，其性能和local相比略逊一点，但依然很快，完全满足在本地局域网内建库的需求。
+- 通过ATTACH和DETACH可以实现共享文件夹远程访问，其性能和local相比略逊一点，但依然很快，完全满足在本地局域网内建库的需求。但是 ATTACH 操作本身非常耗时，5G大小的数据库，耗时13秒。所以Duckdb启动后，其进程需要一直在后台运行，以保证数据的快速访问。
 - 为了获得最佳效率，每个symbol单独成表，否则每日数据更新后，symbol会分布在不同的block中，最后导致查询效率变低
-- 每日数据保存为csv直接通过Duckdb读取，非常方便
-- Duckdb会自动给每一列创建block range index。如果数据是symbol+dt二维，dt分散在不同行，按dt查询效率很低，如果在dt上建立ART索引，反而效率更低了。
-
-## TODO
-
-1. DuckDB在大数据上进行测试
+- Duckdb可以直接加载csv和Excel、parquet数据，非常方便
+- Duckdb会自动给每一列创建block range index。如果数据是symbol+dt二维，dt分散在不同行，按dt查询效率很低。测试发现，在dt上建立ART索引，查询效率反而更低了。
