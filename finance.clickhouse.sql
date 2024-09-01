@@ -47,4 +47,4 @@ CREATE TABLE bars_daily (
     lb_down_count UInt8
 ) ENGINE = MergeTree
 PRIMARY KEY (dt);
-INSERT INTO bars_daily FROM INFILE 'usr/data.csv' FORMAT CSVWithNames;
+INSERT INTO bars_daily FROM INFILE 'usr/000001.SZ.csv' FORMAT CSVWithNames;

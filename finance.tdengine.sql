@@ -47,4 +47,4 @@ CREATE STABLE IF NOT EXISTS bars_daily (
     lb_down_count tinyint unsigned
 ) TAGS (symbol binary(9));
 CREATE TABLE IF NOT EXISTS bars_daily_000001_sz USING bars_daily TAGS ('000001.SZ');
-insert into bars_daily_000001_sz file 'datasources/data.csv';
+insert into bars_daily_000001_sz file 'datasources/000001.SZ.csv';
