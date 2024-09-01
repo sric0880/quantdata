@@ -224,8 +224,19 @@ def tiledb_get_array(A, query: dict = None, indexer: dict = None):
         return A.multi_index[None:None, None:None]
 
 
-def duckdb_connect(uri):
-    return duckdb.execute(f"ATTACH '{uri}' as A (READ_ONLY);USE A;")
+def duckdb_connect(uri, extensions:list=None):
+    conn = duckdb.connect()
+    conn.execute('SET enable_progress_bar = false;')
+    conn.execute('SET enable_progress_bar_print = false;')
+    if extensions:
+        for ext in extensions:
+            conn.load_extension(ext)
+    try:
+        conn.execute(f"ATTACH '{uri}' as A (READ_ONLY);USE A;")
+        return conn
+    except:
+        conn.close()
+        raise
 
 
 def duckdb_close(conn):
