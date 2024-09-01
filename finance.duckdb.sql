@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS bars_daily_{tablename} AS
-    SELECT * FROM read_csv('datasources/{symbol}.csv', header=true, columns = {{
+    SELECT * FROM read_csv('{csv_path}.csv', header=true, columns = {{
         "dt":"TIMESTAMP_S",
         "name":"VARCHAR",
         "_open":"FLOAT",

@@ -4,7 +4,7 @@ import numpy as np
 
 import quantdata as qd
 
-uri = '../datas/duckdb/finance.db'
+uri = '../datas/duckdb/test_finance.db'
 tablename = 'bars_daily_000001_SZ'
 
 def test_duckdb():

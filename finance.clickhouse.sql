@@ -3,10 +3,10 @@ USE finance;
 CREATE TABLE bars_daily (
     dt DateTime,
     name String,
-    open Float32,
-    high Float32,
-    low Float32,
-    close Float32,
+    _open Float32,
+    _high Float32,
+    _low Float32,
+    _close Float32,
     volume UInt32,
     amount UInt64,
     preclose Float32,
@@ -44,7 +44,11 @@ CREATE TABLE bars_daily (
     maxupordown Int8,
     maxupordown_at_open Int8,
     lb_up_count UInt8,
-    lb_down_count UInt8
+    lb_down_count UInt8,
+    close Float32,
+    open Float32,
+    high Float32,
+    low Float32
 ) ENGINE = MergeTree
 PRIMARY KEY (dt);
 INSERT INTO bars_daily FROM INFILE 'usr/000001.SZ.csv' FORMAT CSVWithNames;

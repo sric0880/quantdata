@@ -3,10 +3,10 @@ USE finance;
 CREATE STABLE IF NOT EXISTS bars_daily (
     dt timestamp,
     name nchar(8),
-    open float,
-    high float,
-    low float,
-    close float,
+    _open float,
+    _high float,
+    _low float,
+    _close float,
     volume int unsigned,
     amount bigint unsigned,
     preclose float,
@@ -44,7 +44,11 @@ CREATE STABLE IF NOT EXISTS bars_daily (
     maxupordown tinyint,
     maxupordown_at_open tinyint,
     lb_up_count tinyint unsigned,
-    lb_down_count tinyint unsigned
+    lb_down_count tinyint unsigned,
+    close float,
+    open float,
+    high float,
+    low float
 ) TAGS (symbol binary(9));
 CREATE TABLE IF NOT EXISTS bars_daily_000001_sz USING bars_daily TAGS ('000001.SZ');
-insert into bars_daily_000001_sz file 'datasources/000001.SZ.csv';
+insert into bars_daily_000001_sz file '/usr/000001.SZ.csv';
