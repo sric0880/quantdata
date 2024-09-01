@@ -32,7 +32,7 @@ def test_get_array001():
         np.testing.assert_equal(
             qd.tiledb_get_array(A, query={'attrs':['name']}, indexer=(('symbol', 'dt'), ("000001.SZ", slice(np.datetime64('2024-04-25', 'D'),np.datetime64('2024-04-29', 'D'))))),
             OrderedDict([
-                ('dt', np.array(['2024-04-25T08:00:00', '2024-04-26T08:00:00'], dtype='datetime64[s]')), 
+                ('dt', np.array(['2024-04-25T00:00:00', '2024-04-26T00:00:00'], dtype='datetime64[s]')), 
                 ('symbol', [b'000001.SZ']),
                 ('name', [['平安银行', '平安银行']])
             ])
@@ -60,7 +60,7 @@ def test_get_array003():
 def test_get_array004():
     logging.info("-----------test_get_array004-----------")
     with qd.tiledb_connect(array_bars_stock_daily) as A:
-        a = qd.tiledb_get_array(A, query={'attrs':['name']}, indexer=(('symbol', 'dt'), ("000001.SZ", [(np.datetime64('2024-04-24', 'D'), np.datetime64('2024-04-25', 'D')), np.datetime64('2024-04-25T08:00:00', 's'), np.datetime64('2024-08-15T08:00:00', 's')]))),
+        a = qd.tiledb_get_array(A, query={'attrs':['name']}, indexer=(('symbol', 'dt'), ("000001.SZ", [(np.datetime64('2024-04-24', 'D'), np.datetime64('2024-04-25', 'D')), np.datetime64('2024-04-25T00:00:00', 's'), np.datetime64('2024-08-15T00:00:00', 's')]))),
         logging.info(a)
     logging.info("")
 
