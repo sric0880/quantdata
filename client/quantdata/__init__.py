@@ -1,4 +1,5 @@
 import datetime
+import pathlib
 
 try:
     import tiledb
@@ -29,6 +30,7 @@ __all__ = [
     "tiledb_get_array_shape",
     "tiledb_get_array",
     "duckdb_connect",
+    "duckdb_attach",
     "duckdb_close",
     "duckdb_get_array",
     "duckdb_get_array_last_rows",
@@ -224,16 +226,49 @@ def tiledb_get_array(A, query: dict = None, indexer: dict = None):
         return A.multi_index[None:None, None:None]
 
 
-def duckdb_connect(uri, extensions:list=None):
-    conn = duckdb.connect()
-    conn.execute('SET enable_progress_bar = false;')
-    conn.execute('SET enable_progress_bar_print = false;')
+def duckdb_connect(
+    extensions: tuple = None,
+    memory_limit: str = None,
+    threads_limit: int = None,
+    shared_memory: bool = False,
+):
+    """
+    params:
+        uri: path/to/${file}.db
+        extensions: like ("httpfs",)
+        memory_limit: like "10GB"
+        threads_limit: The number of total threads used by the system
+        shared_memory: if not None, connect to a shared memory database. default not shared. But file database cannot be shared.
+        see more configuration: https://duckdb.org/docs/configuration/overview.html#configuration-reference
+        see abort connections: https://duckdb.org/docs/api/python/dbapi.html
+    """
+    config = {}  # only support global option, local not allowed
+    if memory_limit:
+        config["memory_limit"] = memory_limit
+    if threads_limit:
+        config["threads"] = threads_limit
+    if shared_memory:
+        database = ":memory:lzq01"
+    else:
+        database = ":memory:"
+    # 内存的任何修改在close之后都将丢失
+    conn = duckdb.connect(database=database, config=config)
+    # local options set here
+    conn.execute("SET enable_progress_bar = false;")
+    conn.execute("SET enable_progress_bar_print = false;")
     if extensions:
         for ext in extensions:
             conn.load_extension(ext)
+    return conn
+
+
+def duckdb_attach(conn, uri: str):
+    """
+    共享文件夹的db文件只能通过attach加载，不能通过connect的方式加载
+    """
+    db_name = pathlib.Path(uri).name.replace(".db", "")
     try:
-        conn.execute(f"ATTACH '{uri}' as A (READ_ONLY);USE A;")
-        return conn
+        conn.execute(f"ATTACH IF NOT EXISTS '{uri}' as {db_name} (READ_ONLY);")
     except:
         conn.close()
         raise
@@ -243,30 +278,34 @@ def duckdb_close(conn):
     conn.close()
 
 
-def duckdb_get_array(conn, tablename, attrs: list = None, filter: str = None):
+def duckdb_get_array(
+    conn, db_name: str, tablename: str, attrs: list = None, filter: str = None
+):
     names = ",".join(attrs) if attrs else "*"
-    q = conn.sql(f"select {names} from A.{tablename}")
+    q = conn.sql(f"select {names} from {db_name}.{tablename}")
     if filter:
         q = q.filter(filter)
     return q
 
 
-def duckdb_get_array_last_rows(conn, tablename: str, attrs: list = None, N: int = 1):
-    count = conn.sql(f'SELECT count(*) from A.{tablename}').fetchone()[0]
+def duckdb_get_array_last_rows(
+    conn, db_name: str, tablename: str, attrs: list = None, N: int = 1
+):
+    count = conn.sql(f"SELECT count(*) from {db_name}.{tablename}").fetchone()[0]
     names = ",".join(attrs) if attrs else "*"
     return conn.sql(
-        f"SELECT {names} FROM A.{tablename} LIMIT {N} OFFSET {count-N};"
+        f"SELECT {names} FROM {db_name}.{tablename} LIMIT {N} OFFSET {count-N};"
     )
     # 返回全部行只要8ms的情况下，常规做法读取最后一行，竟然要16ms
     # if N == 1:
     #     if not attrs:
-    #         return conn.sql(f"select last(COLUMNS(*)) from A.{tablename}")
+    #         return conn.sql(f"select last(COLUMNS(*)) from {db_name}.{tablename}")
     #     else:
     #         field_name = "last({a}) as {a}"
     #         names = ",".join(field_name.format(a=attr) for attr in attrs)
-    #         return conn.sql(f"select {names} from A.{tablename}")
+    #         return conn.sql(f"select {names} from {db_name}.{tablename}")
     # else:
     #     names = ",".join(attrs) if attrs else "*"
     #     return conn.sql(
-    #         f"SELECT * FROM (select {names} from A.{tablename} ORDER BY dt DESC LIMIT {N}) ORDER BY dt ASC;"
+    #         f"SELECT * FROM (select {names} from {db_name}.{tablename} ORDER BY dt DESC LIMIT {N}) ORDER BY dt ASC;"
     #     )
