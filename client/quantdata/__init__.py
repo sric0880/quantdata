@@ -1,5 +1,6 @@
 import datetime
 import pathlib
+from collections import defaultdict
 
 import numpy as np
 
@@ -79,6 +80,16 @@ def mongo_get_data(
     if max_count:
         docs = docs.limit(max_count)
     return docs
+
+
+def mongo_fetchnumpy(cursor):
+    ret = defaultdict(list)
+    for doc in cursor:
+        for col, value in doc.items():
+            ret[col].append(value)
+    for col, lst in ret.items():
+        ret[col] = np.array(lst)
+    return ret
 
 
 def mongo_get_trade_cal(
