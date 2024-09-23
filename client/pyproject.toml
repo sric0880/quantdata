@@ -10,7 +10,7 @@ authors = [
 ]
 description = 'quantdata client API'
 requires-python = ">=3.9"
-dependencies = ["pymongo"]
+dependencies = ["numpy>=1.26.4", "pymongo"]
 
 [project.optional-dependencies]
 tiledb = [ "tiledb" ]
