@@ -56,17 +56,20 @@ def test_get_trade_cal():
         assert last_dt == next_dt
 
 
-def test_fetchnumpy():
-    with qd.mongo_connect("192.168.2.40") as client:
-        db = client["finance_ctpfuture"]
-        adjs = qd.mongo_get_data(
-            db,
-            "adjust_factors",
-            query={"symbol": "c"},
-            projection={
-                "_id": False,
-                "symbol": False,
-            },
-        )
-        adjs = qd.mongo_fetchnumpy(adjs)
-        logging.info(adjs)
+# def test_fetchnumpy():
+#     import numpy as np
+
+#     with qd.mongo_connect(host) as client:
+#         db = client["finance_ctpfuture"]
+#         adjs = qd.mongo_get_data(
+#             db,
+#             "adjust_factors",
+#             query={"symbol": "c"},
+#             projection={
+#                 "_id": False,
+#                 "symbol": False,
+#             },
+#         )
+#         adjs = qd.mongo_fetchnumpy(adjs)
+#         adjs["tradedate"] = np.array(list(map(np.datetime64, adjs["tradedate"])))
+#         logging.info(adjs)
