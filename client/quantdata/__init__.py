@@ -150,23 +150,23 @@ def mongo_get_next_trade_dt(db: Database, dt: datetime.datetime):
         return None
 
 
-_default_ctx = None
+_tiledb_default_ctx = None
 
 
-def _tiledb_init_default_context():
-    global _default_ctx
-    config = tiledb.Config()
-    # Set configuration parameters
-    config["sm.check_coord_dups"] = "false"
-    # turn off Coordinate Out-of-bounds Check
-    config["sm.check_coord_oob"] = False
-    config["sm.tile_cache_size"] = 10000000
+def _tiledb_default_context():
+    global _tiledb_default_ctx
+    if _tiledb_default_ctx is None:
+        config = tiledb.Config()
+        # Set configuration parameters
+        config["sm.check_coord_dups"] = "false"
+        # turn off Coordinate Out-of-bounds Check
+        config["sm.check_coord_oob"] = False
+        config["sm.tile_cache_size"] = 10000000
 
-    # Create contex object
-    _default_ctx = tiledb.Ctx(config)
+        # Create contex object
+        _tiledb_default_ctx = tiledb.Ctx(config)
 
-
-_tiledb_init_default_context()
+    return _tiledb_default_ctx
 
 
 def tiledb_has_attr(uri: str, attr: str):
@@ -201,7 +201,7 @@ def tiledb_connect(uri, ctx=None):
 
     ctx 用于参数设置，None使用默认参数
     """
-    return tiledb.open(uri, mode="r", ctx=ctx or _default_ctx)
+    return tiledb.open(uri, mode="r", ctx=ctx or _tiledb_default_context())
 
 
 def tiledb_close(A):
