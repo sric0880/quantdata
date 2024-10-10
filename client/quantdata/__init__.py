@@ -1,8 +1,11 @@
-import datetime
+import atexit
 import pathlib
 from collections import defaultdict
+from datetime import datetime
+from functools import singledispatch
 
 import numpy as np
+import yaml
 
 try:
     import tiledb
@@ -17,27 +20,6 @@ except ImportError:
 
 from pymongo import MongoClient
 from pymongo.database import Database
-
-__all__ = [
-    "mongo_connect",
-    "mongo_close",
-    "mongo_get_data",
-    "mongo_get_last_trade_dt",
-    "mongo_get_next_trade_dt",
-    "tiledb_has_attr",
-    "tiledb_get_attrs",
-    "tiledb_get_symbols",
-    "tiledb_get_datetimes",
-    "tiledb_connect",
-    "tiledb_close",
-    "tiledb_get_array_shape",
-    "tiledb_get_array",
-    "duckdb_connect",
-    "duckdb_attach",
-    "duckdb_close",
-    "duckdb_get_array",
-    "duckdb_get_array_last_rows",
-]
 
 
 def mongo_connect(host, port=27017, user="root", password="admin", **kwargs):
@@ -58,12 +40,13 @@ def mongo_close(client):
     client.close()
 
 
+@singledispatch
 def mongo_get_data(
     db: Database,
-    collection_name,
+    collection_name: str,
     query: dict = None,
     sort_by: dict = None,
-    max_count=None,
+    max_count: int = None,
     **find_kwargs,
 ):
     """
@@ -95,8 +78,8 @@ def mongo_fetchnumpy(cursor):
 def mongo_get_trade_cal(
     db: Database,
     collection_name="trade_cal",
-    start_date: datetime.datetime = None,
-    end_date: datetime.datetime = None,
+    start_date: datetime = None,
+    end_date: datetime = None,
 ):
     """返回从start_date到end_date(包括本身)的交易日期"""
     if start_date and end_date:
@@ -125,7 +108,7 @@ def mongo_get_trade_cal(
         return mongo_get_data(db, collection_name, {"status": 1})
 
 
-def mongo_get_last_trade_dt(db: Database, dt: datetime.datetime):
+def mongo_get_last_trade_dt(db: Database, dt: datetime):
     """从`dt`开始的上一个交易日"""
     result = (
         db["trade_cal"]
@@ -139,7 +122,7 @@ def mongo_get_last_trade_dt(db: Database, dt: datetime.datetime):
         return None
 
 
-def mongo_get_next_trade_dt(db: Database, dt: datetime.datetime):
+def mongo_get_next_trade_dt(db: Database, dt: datetime):
     """从`dt`开始的下一个交易日"""
     result = (
         db["trade_cal"].find({"$and": [{"status": 1}, {"_id": {"$gt": dt}}]}).limit(1)
@@ -361,3 +344,149 @@ def duckdb_get_array_last_rows(
     #     return conn.sql(
     #         f"SELECT * FROM (select {names} from {db_name}.{tablename} ORDER BY dt DESC LIMIT {N}) ORDER BY dt ASC;"
     #     )
+
+
+def init_db():
+    with open("quantdata_config.yml", "r") as f:
+        config = yaml.safe_load(f)
+    # 初始化数据库连接，全局共享
+    if "duckdb" in config:
+        _init_duckdb(config["duckdb"])
+    if "mongodb" in config:
+        _init_mongodb(config["mongodb"])
+
+
+conn_mongodb: MongoClient = None
+conn_duckdb = None
+
+
+def _init_duckdb(config):
+    global conn_duckdb
+    uris = config.pop("uri")
+    if conn_duckdb is None:
+        conn_duckdb = duckdb_connect(**config)
+    for uri in uris:
+        print(f"duckdb attach {uri}...")
+        duckdb_attach(conn_duckdb, uri)
+
+
+def _close_duckdb():
+    global conn_duckdb
+    if conn_duckdb is None:
+        return
+    try:
+        print(f"duckdb closing...")
+        duckdb_close(conn_duckdb)
+        print(f"duckdb closed")
+    except:
+        pass
+    conn_duckdb = None
+
+
+def _init_mongodb(config):
+    global conn_mongodb
+    if conn_mongodb is not None:
+        return
+    print("connecting mongodb...")
+    conn_mongodb = mongo_connect(**config)
+
+
+def _close_mongodb():
+    global conn_mongodb
+    if conn_mongodb is None:
+        return
+    try:
+        print(f"mongodb closing...")
+        mongo_close(conn_mongodb)
+        print(f"mongodb closed")
+    except:
+        pass
+    conn_mongodb = None
+
+
+@atexit.register
+def close_db():
+    _close_mongodb()
+    _close_duckdb()
+
+
+def get_data(
+    db_name,
+    tablename,
+    fields,
+    start_dt: datetime = None,
+    till_dt: datetime = None,
+    side="both",
+    record_view=True,
+):
+    if side is None:
+        gt = ">"
+        lt = "<"
+    elif side == "both":
+        gt = ">="
+        lt = "<="
+    elif side == "right":
+        gt = ">"
+        lt = "<="
+    elif side == "left":
+        gt = ">="
+        lt = "<"
+    else:
+        raise ValueError("side has only 'both'/'right'/'left'/None options")
+
+    if start_dt is not None:
+        start_dt = start_dt.strftime("%Y-%m-%d %H:%M:%S")
+    if till_dt is not None:
+        till_dt = till_dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    if start_dt is not None and till_dt is not None:
+        filter = f"dt{gt}'{start_dt}' and dt{lt}'{till_dt}'"
+    elif start_dt is not None:
+        filter = f"dt{gt}'{start_dt}'"
+    elif till_dt is not None:
+        filter = f"dt{lt}'{till_dt}'"
+    else:
+        filter = None
+
+    q = duckdb_get_array(
+        conn_duckdb,
+        db_name,
+        tablename,
+        attrs=fields,
+        filter=filter,
+    )
+    if record_view:
+        return duckdb_fetchrecarray(q)
+    else:
+        return q.fetchnumpy()
+
+
+def get_trade_cal(db_name, **kwargs):
+    return mongo_get_trade_cal(conn_mongodb[db_name], **kwargs)
+
+
+def get_last_trade_dt(db_name, current_dt):
+    return mongo_get_last_trade_dt(conn_mongodb[db_name], current_dt)
+
+
+@mongo_get_data.register
+def _(
+    db_name: str,
+    collection_name: str,
+    query: dict = None,
+    sort_by: dict = None,
+    max_count: int = None,
+    **find_kwargs,
+):
+    return mongo_get_data(
+        conn_mongodb[db_name],
+        collection_name,
+        query=query,
+        sort_by=sort_by,
+        max_count=max_count,
+        **find_kwargs,
+    )
+
+
+def mongo_fetchnumpy(cursor):
+    return mongo_fetchnumpy(cursor)
