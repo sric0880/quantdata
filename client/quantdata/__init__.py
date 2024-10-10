@@ -486,7 +486,3 @@ def _(
         max_count=max_count,
         **find_kwargs,
     )
-
-
-def mongo_fetchnumpy(cursor):
-    return mongo_fetchnumpy(cursor)
