@@ -410,14 +410,13 @@ def close_db():
     _close_duckdb()
 
 
-def get_data(
+def _get_data(
     db_name,
     tablename,
     fields,
-    start_dt: datetime = None,
-    till_dt: datetime = None,
-    side="both",
-    record_view=True,
+    start_dt: datetime,
+    till_dt: datetime,
+    side: str,
 ):
     if side is None:
         gt = ">"
@@ -455,10 +454,43 @@ def get_data(
         attrs=fields,
         filter=filter,
     )
-    if record_view:
-        return duckdb_fetchrecarray(q)
-    else:
-        return q.fetchnumpy()
+    return q
+
+
+def get_data_recarray(
+    db_name,
+    tablename,
+    fields,
+    start_dt: datetime = None,
+    till_dt: datetime = None,
+    side="both",
+):
+    q = _get_data(db_name, tablename, fields, start_dt, till_dt, side)
+    return duckdb_fetchrecarray(q)
+
+
+def get_data_ndarray(
+    db_name,
+    tablename,
+    fields,
+    start_dt: datetime = None,
+    till_dt: datetime = None,
+    side="both",
+):
+    q = _get_data(db_name, tablename, fields, start_dt, till_dt, side)
+    return q.fetchnumpy()
+
+
+def get_data_df(
+    db_name,
+    tablename,
+    fields,
+    start_dt: datetime = None,
+    till_dt: datetime = None,
+    side="both",
+):
+    q = _get_data(db_name, tablename, fields, start_dt, till_dt, side)
+    return q.fetchdf()
 
 
 def get_trade_cal(db_name, **kwargs):
