@@ -95,7 +95,7 @@ def get_ths_concepts_names():
     return {doc["symbol"]: doc["name"] for doc in index_list}
 
 
-def stat_ths_concepts(days, n, m, logging):
+def stat_ths_concepts(days, n, m, logger):
     """
     统计同花顺概念板块前{n}日涨停股重复最多的{m}个概念
     """
@@ -131,7 +131,7 @@ def stat_ths_concepts(days, n, m, logging):
     return ret
 
 
-def ths_concepts_toprank_in_m_days(dt, top_n, m, logging):
+def ths_concepts_toprank_in_m_days(dt, top_n, m, logger):
     """
     {m}个交易日内有上过涨幅榜前{top_n}的板块
     """
@@ -152,7 +152,7 @@ def ths_concepts_toprank_in_m_days(dt, top_n, m, logging):
             N=m,
         ).df()
         if _df is None:
-            logging.error(f"同花顺指数{symbol}没有日线数据")
+            logger.error(f"同花顺指数{symbol}没有日线数据")
             continue
         if _df.empty:
             continue
@@ -165,8 +165,8 @@ def ths_concepts_toprank_in_m_days(dt, top_n, m, logging):
         codes = row.nlargest(top_n, keep="all")
         top15 = codes.index.tolist()
         top15in3M = top15in3M.union(top15)
-    logging.debug(f"最近{m}个月上过排行榜前{top_n}的概念：")
-    logging.debug(top15in3M)
+    logger.debug(f"最近{m}个月上过排行榜前{top_n}的概念：")
+    logger.debug(top15in3M)
     return top15in3M
 
 
@@ -222,7 +222,7 @@ def get_indexes_of_stock(collection_name, symbol, dt):
     return _get_indexes_of_stock(df)
 
 
-def include_in_ths_concepts(stock_list, dt, concept_codes, logging):
+def include_in_ths_concepts(stock_list, dt, concept_codes, logger):
     """
     在概念集{concept_codes}中的股票才能被选中
     """
@@ -240,7 +240,7 @@ def include_in_ths_concepts(stock_list, dt, concept_codes, logging):
                 found = True
                 break
         if not found:
-            logging.debug(f"{stock}被排除: 不在概念集中")
+            logger.debug(f"{stock}被排除: 不在概念集中")
     return ret
 
 
