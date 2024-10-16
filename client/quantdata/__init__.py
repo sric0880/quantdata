@@ -324,9 +324,17 @@ def duckdb_fetchrecarray(q):
 
 
 def duckdb_get_array_last_rows(
-    conn, db_name: str, tablename: str, attrs: list = None, N: int = 1
+    conn,
+    db_name: str,
+    tablename: str,
+    attrs: list = None,
+    filter: str = None,
+    N: int = 1,
 ):
-    count = conn.sql(f"SELECT count(*) from {db_name}.{tablename}").fetchone()[0]
+    q = conn.sql(f"SELECT count(*) from {db_name}.{tablename}")
+    if filter:
+        q = q.filter(filter)
+    count = q.fetchone()[0]
     names = ",".join(attrs) if attrs else "*"
     return conn.sql(
         f"SELECT {names} FROM {db_name}.{tablename} LIMIT {N} OFFSET {count-N};"
@@ -455,6 +463,25 @@ def _get_data(
         filter=filter,
     )
     return q
+
+
+def get_data_last_row(
+    db_name, tablename, fields, till_dt: datetime, side: str = "right", N: int = 1
+):
+    if side is None:
+        lt = "<"
+    elif side == "right":
+        lt = "<="
+    else:
+        raise ValueError("side has only 'right'/None options")
+    if till_dt is not None:
+        till_dt = till_dt.strftime("%Y-%m-%d %H:%M:%S")
+        filter = f"dt{lt}'{till_dt}'"
+    else:
+        filter = None
+    return duckdb_get_array_last_rows(
+        conn_duckdb, db_name, tablename, attrs=fields, filter=filter, N=N
+    )
 
 
 def get_data_recarray(
