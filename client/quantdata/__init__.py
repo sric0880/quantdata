@@ -354,9 +354,10 @@ def duckdb_get_array_last_rows(
     #     )
 
 
-def init_db():
-    with open("quantdata_config.yml", "r") as f:
-        config = yaml.safe_load(f)
+def init_db(config: dict = None):
+    if config is None:
+        with open("quantdata_config.yml", "r") as f:
+            config = yaml.safe_load(f)
     # 初始化数据库连接，全局共享
     if "duckdb" in config:
         _init_duckdb(config["duckdb"])
