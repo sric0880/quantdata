@@ -284,45 +284,6 @@ def duckdb_get_array(
     return q
 
 
-duckdbpytype_to_nptype = {
-    "BIGINT": np.int64,
-    # "BIT": ,
-    # "BLOB": ,  # bytearray or bytes
-    "BOOLEAN": "?",
-    "DATE": "datetime64[D]",
-    "DOUBLE": np.float64,
-    "FLOAT": np.float32,
-    # "HUGEINT": np.int128,
-    # "UHUGEINT": np.uint128,
-    "INTEGER": np.int32,
-    # "INTERVAL":
-    "SMALLINT": np.int16,
-    # "SQLNULL": ,
-    # "TIME": ,
-    "TIMESTAMP": "datetime64[us]",  # microsecond
-    "TIMESTAMP_MS": "datetime64[ms]",  # millisecond
-    "TIMESTAMP_NS": "datetime64[ns]",
-    "TIMESTAMP_S": "datetime64[s]",
-    # "TIMESTAMP_TZ":
-    # "TIME_TZ":
-    "TINYINT": np.int8,
-    "UBIGINT": np.uint64,
-    "UINTEGER": np.uint32,
-    "USMALLINT": np.uint16,
-    "UTINYINT": np.uint8,
-    # "UUID":
-    "VARCHAR": "U",
-}
-
-
-def duckdb_fetchrecarray(q):
-    dtypes = [
-        (field, duckdbpytype_to_nptype[str(dtype)])
-        for field, dtype in zip(q.columns, q.dtypes)
-    ]
-    return np.array(q.fetchall(), dtype=dtypes).view(np.recarray)
-
-
 def duckdb_get_array_last_rows(
     conn,
     db_name: str,
