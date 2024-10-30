@@ -454,8 +454,9 @@ def get_data_recarray(
     till_dt: datetime = None,
     side="both",
 ):
+    """运行效率不高，建议使用 get_data_ndarray"""
     q = _get_data(db_name, tablename, fields, start_dt, till_dt, side)
-    return duckdb_fetchrecarray(q)
+    return q.fetchdf().to_records(index=False)
 
 
 def get_data_ndarray(
