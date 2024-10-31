@@ -278,9 +278,11 @@ def duckdb_get_array(
     conn, db_name: str, tablename: str, attrs: list = None, filter: str = None
 ):
     names = ",".join(attrs) if attrs else "*"
-    q = conn.sql(f"select {names} from {db_name}.{tablename}")
-    if filter:
-        q = q.filter(filter)
+    filter = f"where {filter}" if filter else ""
+    q = conn.sql(f"select {names} from {db_name}.{tablename} {filter}")
+    # 经测试，下面这种方式效率低
+    # if filter:
+    #     q = q.filter(filter)
     return q
 
 
@@ -417,14 +419,9 @@ def _get_data(
     else:
         filter = None
 
-    q = duckdb_get_array(
-        conn_duckdb,
-        db_name,
-        tablename,
-        attrs=fields,
-        filter=filter,
+    return duckdb_get_array(
+        conn_duckdb, db_name, tablename, attrs=fields, filter=filter
     )
-    return q
 
 
 def get_data_last_row(
@@ -446,41 +443,120 @@ def get_data_last_row(
     )
 
 
-def get_data_recarray(
+duckdbpytype_to_nptype = {
+    "BIGINT": np.int64,
+    # "BIT": ,
+    # "BLOB": ,  # bytearray or bytes
+    "BOOLEAN": "?",
+    "DATE": "datetime64[D]",
+    "DOUBLE": np.float64,
+    "FLOAT": np.float32,
+    # "HUGEINT": np.int128,
+    # "UHUGEINT": np.uint128,
+    "INTEGER": np.int32,
+    # "INTERVAL":
+    "SMALLINT": np.int16,
+    # "SQLNULL": ,
+    # "TIME": ,
+    "TIMESTAMP": "datetime64[us]",  # microsecond
+    "TIMESTAMP_MS": "datetime64[ms]",  # millisecond
+    "TIMESTAMP_NS": "datetime64[ns]",
+    "TIMESTAMP_S": "datetime64[s]",
+    # "TIMESTAMP_TZ":
+    # "TIME_TZ":
+    "TINYINT": np.int8,
+    "UBIGINT": np.uint64,
+    "UINTEGER": np.uint32,
+    "USMALLINT": np.uint16,
+    "UTINYINT": np.uint8,
+    # "UUID":
+    "VARCHAR": "U",
+}
+
+
+def duckdb_fetchall_to_recarray(q):
+    """效率低"""
+    dtypes = [
+        (field, duckdbpytype_to_nptype[str(dtype)])
+        for field, dtype in zip(q.columns, q.dtypes)
+    ]
+    return np.array(q.fetchall(), dtype=dtypes).view(np.recarray)
+
+
+def duckdb_fetchnumpy_to_recarray(q):
+    """少量数据效率高"""
+    datas = q.fetchnumpy()
+    dtypes = [(col, arr.dtype) for col, arr in datas.items()]
+    return np.array(list(zip(*datas.values())), dtype=dtypes).view(np.recarray)
+
+
+def duckdb_fetchdf_to_recarray(q):
+    """大量数据效率高"""
+    return q.fetchdf().to_records(index=False)
+
+
+def get_data_recarray_onlyfortest(
     db_name,
     tablename,
-    fields,
+    fields: list = None,
     start_dt: datetime = None,
     till_dt: datetime = None,
     side="both",
 ):
-    """运行效率不高，建议使用 get_data_ndarray"""
-    q = _get_data(db_name, tablename, fields, start_dt, till_dt, side)
-    return q.fetchdf().to_records(index=False)
+    """少量数据效率高"""
+    return duckdb_fetchall_to_recarray(
+        _get_data(db_name, tablename, fields, start_dt, till_dt, side)
+    )
+
+
+def get_data_recarray_s(
+    db_name,
+    tablename,
+    fields: list = None,
+    start_dt: datetime = None,
+    till_dt: datetime = None,
+    side="both",
+):
+    """少量数据效率高"""
+    return duckdb_fetchnumpy_to_recarray(
+        _get_data(db_name, tablename, fields, start_dt, till_dt, side)
+    )
+
+
+def get_data_recarray_l(
+    db_name,
+    tablename,
+    fields: list = None,
+    start_dt: datetime = None,
+    till_dt: datetime = None,
+    side="both",
+):
+    """大量数据效率高"""
+    return duckdb_fetchdf_to_recarray(
+        _get_data(db_name, tablename, fields, start_dt, till_dt, side)
+    )
 
 
 def get_data_ndarray(
     db_name,
     tablename,
-    fields,
+    fields: list = None,
     start_dt: datetime = None,
     till_dt: datetime = None,
     side="both",
 ):
-    q = _get_data(db_name, tablename, fields, start_dt, till_dt, side)
-    return q.fetchnumpy()
+    return _get_data(db_name, tablename, fields, start_dt, till_dt, side).fetchnumpy()
 
 
 def get_data_df(
     db_name,
     tablename,
-    fields,
+    fields: list = None,
     start_dt: datetime = None,
     till_dt: datetime = None,
     side="both",
 ):
-    q = _get_data(db_name, tablename, fields, start_dt, till_dt, side)
-    return q.fetchdf()
+    return _get_data(db_name, tablename, fields, start_dt, till_dt, side).fetchdf()
 
 
 def get_trade_cal(db_name, **kwargs):
