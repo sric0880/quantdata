@@ -317,10 +317,17 @@ def duckdb_get_array_last_rows(
     #     )
 
 
-def init_db(config: dict = None):
+def init_db(config: dict = None, stype: str = None):
     if config is None:
         with open("quantdata_config.yml", "r") as f:
             config = yaml.safe_load(f)
+    if stype:
+        srv = config["services"][stype]
+        cfg = {}
+        for db_name, db_cfg_name in srv.items():
+            cfg[db_name] = config[db_cfg_name]
+        init_db(cfg)
+        return
     # 初始化数据库连接，全局共享
     if "duckdb" in config:
         _init_duckdb(config["duckdb"])
