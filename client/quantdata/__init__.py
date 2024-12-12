@@ -229,14 +229,13 @@ def duckdb_connect(
     shared_memory: bool = False,
 ):
     """
-    params:
-        uri: path/to/${file}.db
+    Params:
         extensions: like ("httpfs",)
         memory_limit: like "10GB"
         threads_limit: The number of total threads used by the system
-        shared_memory: if not None, connect to a shared memory database. default not shared. But file database cannot be shared.
+        shared_memory: if True, connect to a shared memory database. default not shared. But file database cannot be shared.
         see more configuration: https://duckdb.org/docs/configuration/overview.html#configuration-reference
-        see abort connections: https://duckdb.org/docs/api/python/dbapi.html
+        see about connections: https://duckdb.org/docs/api/python/dbapi.html
     """
     config = {}  # only support global option, local not allowed
     if memory_limit:
@@ -261,6 +260,9 @@ def duckdb_connect(
 def duckdb_attach(conn, uri: str):
     """
     共享文件夹的db文件只能通过attach加载，不能通过connect的方式加载
+
+    Params:
+        uri: path/to/${file}.db
     """
     db_name = pathlib.Path(uri).name.replace(".db", "")
     try:
@@ -294,27 +296,11 @@ def duckdb_get_array_last_rows(
     filter: str = None,
     N: int = 1,
 ):
-    q = conn.sql(f"SELECT count(*) from {db_name}.{tablename}")
-    if filter:
-        q = q.filter(filter)
-    count = q.fetchone()[0]
     names = ",".join(attrs) if attrs else "*"
+    filter = f"where {filter}" if filter else ""
     return conn.sql(
-        f"SELECT {names} FROM {db_name}.{tablename} LIMIT {N} OFFSET {count-N};"
+        f"SELECT * FROM (select {names} FROM {db_name}.{tablename} {filter} ORDER BY dt DESC LIMIT {N}) ORDER BY dt ASC;"
     )
-    # 返回全部行只要8ms的情况下，常规做法读取最后一行，竟然要16ms
-    # if N == 1:
-    #     if not attrs:
-    #         return conn.sql(f"select last(COLUMNS(*)) from {db_name}.{tablename}")
-    #     else:
-    #         field_name = "last({a}) as {a}"
-    #         names = ",".join(field_name.format(a=attr) for attr in attrs)
-    #         return conn.sql(f"select {names} from {db_name}.{tablename}")
-    # else:
-    #     names = ",".join(attrs) if attrs else "*"
-    #     return conn.sql(
-    #         f"SELECT * FROM (select {names} from {db_name}.{tablename} ORDER BY dt DESC LIMIT {N}) ORDER BY dt ASC;"
-    #     )
 
 
 def init_db(config: dict = None, stype: str = None):
