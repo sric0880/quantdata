@@ -1,8 +1,8 @@
 #include <iostream>
-#include <mongocxx/v_noabi/mongocxx/instance.hpp>
-#include <mongocxx/v_noabi/mongocxx/uri.hpp>
-#include <mongocxx/v_noabi/mongocxx/client.hpp>
-#include <mongocxx/v_noabi/mongocxx/collection.hpp>
+#include <mongocxx/instance.hpp>
+#include <mongocxx/uri.hpp>
+#include <mongocxx/client.hpp>
+#include <mongocxx/collection.hpp>
 
 #include "mongodb/quantdata.h"
 

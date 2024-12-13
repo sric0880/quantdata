@@ -1,15 +1,16 @@
+﻿#pragma once
 #include <string>
 #include <chrono>
 #include <optional>
-#include <mongocxx/v_noabi/mongocxx/cursor.hpp>
-#include <bsoncxx/v_noabi/bsoncxx/builder/basic/kvp.hpp>
-#include <bsoncxx/v_noabi/bsoncxx/builder/basic/document.hpp>
-#include <bsoncxx/v_noabi/bsoncxx/builder/basic/array.hpp>
-#include <bsoncxx/v_noabi/bsoncxx/builder/stream/document.hpp>
-#include <bsoncxx/v_noabi/bsoncxx/builder/stream/array.hpp>
-#include <bsoncxx/v_noabi/bsoncxx/builder/stream/helpers.hpp>
-#include <bsoncxx/v_noabi/bsoncxx/document/view_or_value.hpp>
-#include <bsoncxx/v_noabi/bsoncxx/types.hpp>
+#include <mongocxx/cursor.hpp>
+#include <bsoncxx/builder/basic/kvp.hpp>
+#include <bsoncxx/builder/basic/document.hpp>
+#include <bsoncxx/builder/basic/array.hpp>
+#include <bsoncxx/builder/stream/document.hpp>
+#include <bsoncxx/builder/stream/array.hpp>
+#include <bsoncxx/builder/stream/helpers.hpp>
+#include <bsoncxx/document/view_or_value.hpp>
+#include <bsoncxx/types.hpp>
 
 using namespace bsoncxx::v_noabi;
 using namespace mongocxx::v_noabi;

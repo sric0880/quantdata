@@ -166,4 +166,5 @@ cython_debug/
 /etc
 .read
 .vscode/
+.vs/
 .empty/

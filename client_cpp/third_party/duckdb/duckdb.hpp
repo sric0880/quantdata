@@ -1085,6 +1085,32 @@ enum class ProfilerPrintFormat : uint8_t { QUERY_TREE, JSON, QUERY_TREE_OPTIMIZE
 
 
 
+#ifdef _WIN32
+#ifdef DUCKDB_MAIN_LIBRARY
+
+
+#if defined(_WIN32)
+
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
+#ifndef _WINSOCKAPI_
+#define _WINSOCKAPI_
+#endif
+
+#include <windows.h>
+
+#undef CreateDirectory
+#undef MoveFile
+#undef RemoveDirectory
+
+#endif
+
+#endif
+#endif
+
+
 
 //===----------------------------------------------------------------------===//
 //                         DuckDB

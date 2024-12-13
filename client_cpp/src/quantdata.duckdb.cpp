@@ -167,7 +167,7 @@ void duckdb_print_results(duckdb_result *result)
         auto val = duckdb_value_timestamp(result, col_idx, row_idx);
         // val.micros *= 1000000;
         auto ts_struct = duckdb_from_timestamp(val);
-        printf("%lld %d-%02d-%02d %02d:%02d:%02d ", val.micros, ts_struct.date.year, ts_struct.date.month, ts_struct.date.day, ts_struct.time.hour, ts_struct.time.min, ts_struct.time.sec);
+        printf("%ld %d-%02d-%02d %02d:%02d:%02d ", val.micros, ts_struct.date.year, ts_struct.date.month, ts_struct.date.day, ts_struct.time.hour, ts_struct.time.min, ts_struct.time.sec);
         break;
       }
       case DUCKDB_TYPE_VARCHAR:
