@@ -5,7 +5,7 @@ project(quantdata CXX)
 set(CMAKE_CXX_STANDARD 17)
 
 if(MSVC)
-  # ÔÚÉú³ÉdllµÄÍ¬Ê±£¬»áÉú³ÉlibÎÄ¼þ£¬ÓÃÓÚ±»ÆäËûÏîÄ¿Á´½Ó
+  # Windowsä¸‹ç”ŸæˆdllåŒæ—¶ç”Ÿæˆlibï¼Œç”¨äºŽå…¶ä»–é¡¹ç›®é“¾æŽ¥
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
