@@ -1,7 +1,6 @@
 ﻿#pragma once
 #include <string>
 #include <chrono>
-#include <optional>
 #include <mongocxx/cursor.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
@@ -11,6 +10,7 @@
 #include <bsoncxx/builder/stream/helpers.hpp>
 #include <bsoncxx/document/view_or_value.hpp>
 #include <bsoncxx/types.hpp>
+#include <bsoncxx/json.hpp>
 
 using namespace bsoncxx::v_noabi;
 using namespace mongocxx::v_noabi;
@@ -29,14 +29,23 @@ using builder::stream::open_document;
 const static document::view_or_value empty_view;
 const static types::b_date date_zero(std::chrono::milliseconds::zero());
 
-void mongo_connect(const char *host,
-                   int port = 27017,
-                   const char *user = "root",
-                   const char *password = "admin",
-                   const char *authSource = "admin",
-                   const char *authMechanism = "SCRAM-SHA-1");
-void mongo_close();
-std::optional<cursor> mongo_get_data(
+class MongoDBException : public std::logic_error
+{
+    using std::logic_error::logic_error;
+};
+class MongoDBInvalidArgs : public MongoDBException
+{
+    using MongoDBException::MongoDBException;
+};
+
+void MongoConnect(const char *host,
+                  int port = 27017,
+                  const char *user = "root",
+                  const char *password = "admin",
+                  const char *authSource = "admin",
+                  const char *authMechanism = "SCRAM-SHA-1");
+void MongoClose();
+cursor MongoGetData(
     const char *db_name,
     const char *collection_name,
     document::view_or_value filter = empty_view,
@@ -46,9 +55,9 @@ std::optional<cursor> mongo_get_data(
 /**
  * 返回从start_date到end_date(包括本身)的交易日期
  */
-std::optional<cursor> mongo_get_trade_cal(const char *db_name,
-                                          const char *collection_name,
-                                          types::b_date start_date = date_zero,
-                                          types::b_date end_date = date_zero);
+cursor MongoGetTradeCal(const char *db_name,
+                        const char *collection_name,
+                        types::b_date start_date = date_zero,
+                        types::b_date end_date = date_zero);
 // std::time_t mongo_get_last_trade_dt(std::time_t dt);
 // std::time_t mongo_get_next_trade_dt(std::time_t datetime);
