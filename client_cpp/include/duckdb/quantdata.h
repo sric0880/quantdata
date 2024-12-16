@@ -1,6 +1,7 @@
-#pragma once
+﻿#pragma once
 #include <vector>
 #include <string>
+#include <memory>
 #include <stdexcept>
 
 #include "duckdb/duckdb.h"
@@ -8,10 +9,6 @@
 class DuckDBException : public std::logic_error
 {
   using std::logic_error::logic_error;
-};
-class DuckDBInvalidArgs : public DuckDBException
-{
-  using DuckDBException::DuckDBException;
 };
 
 template <typename>

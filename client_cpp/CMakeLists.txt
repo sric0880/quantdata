@@ -14,8 +14,6 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 
 find_library(duckdb duckdb REQUIRED)
 
-message(STATUS "${duckdb}")
-
 add_library(qdduckdb SHARED
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.duckdb.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/duckdb/duckdb.hpp"

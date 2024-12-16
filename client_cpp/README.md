@@ -40,7 +40,7 @@ Windows下载的文件中有个duckdb.dll和duckdb.lib，将它们拷贝到`C:\W
 
 - [cxx driver github下载](https://github.com/mongodb/mongo-cxx-driver/releases)  并 [安装](https://www.mongodb.com/zh-cn/docs/languages/cpp/cpp-driver/current/get-started/download-and-install/)
 
-    MacOS/Linux 从源码安装：
+    - MacOS/Linux 从源码安装：
 
     ```sh
     cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17 -DBUILD_VERSION="4.0.0"
@@ -48,7 +48,7 @@ Windows下载的文件中有个duckdb.dll和duckdb.lib，将它们拷贝到`C:\W
     sudo cmake --build . --target install
     ```
 
-    Windows 从源码安装：
+    - Windows 从源码安装：
 
     参数 -G "Visual Studio \<version> \<year>" 填写自己的版本和年份
 
@@ -62,6 +62,8 @@ Windows下载的文件中有个duckdb.dll和duckdb.lib，将它们拷贝到`C:\W
     cmake --build . --config RelWithDebInfo
     cmake --build . --target install --config RelWithDebInfo
     ```
+
+    如果要安装DEBUG版本，将`RelWithDebInfo`改为`DEBUG`。如果在调试Debug模式下开发，必须安装Debug版本，否则会发生意想不到的Bug。
 
 ## Install
 

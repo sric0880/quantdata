@@ -1,24 +1,19 @@
-#include <iostream>
+﻿#include <iostream>
 #include <mongocxx/instance.hpp>
 #include <mongocxx/uri.hpp>
 #include <mongocxx/client.hpp>
 #include <mongocxx/collection.hpp>
 
 #include "mongodb/quantdata.h"
+#include "quantdata.macros.h"
 
 instance inst;
 client *conn_mongodb = nullptr;
 
-#define check_conn                                   \
+#define ASSER_CONNECTION                                   \
   if (!conn_mongodb)                                 \
   {                                                  \
     throw MongoDBException("mongodb not connected"); \
-  }
-
-#define check_empty_string(arg)                 \
-  if (!arg || !arg[0])                          \
-  {                                             \
-    throw MongoDBInvalidArgs(#arg " is empty"); \
   }
 
 void MongoConnect(const char *host,
@@ -28,10 +23,9 @@ void MongoConnect(const char *host,
                   const char *authSource,
                   const char *authMechanism)
 {
-  char buf[200];
+  char buf[200]{0};
   int cx = std::snprintf(buf, 200, "mongodb://%s:%s@%s:%d?authSource=%s&authMechanism=%s", user, password, host, port, authSource, authMechanism);
-  if (cx < 0 || cx >= 200)
-    throw MongoDBException("mongo connect statement too long");
+  QD_ASSERT((cx>=0&&cx<200), "mongo connect statement too long");
   if (conn_mongodb)
     return;
   conn_mongodb = new client(uri(buf));
@@ -52,9 +46,9 @@ cursor MongoGetData(
     document::view_or_value projection,
     int max_count)
 {
-  check_conn;
-  check_empty_string(db_name);
-  check_empty_string(collection_name);
+  ASSER_CONNECTION;
+  QD_ASSERT_STRING(db_name);
+  QD_ASSERT_STRING(collection_name);
   collection coll = (*conn_mongodb)[db_name][collection_name];
   options::find opts;
   if (max_count > 0)
@@ -77,9 +71,9 @@ cursor MongoGetTradeCal(const char *db_name,
                         types::b_date start_date,
                         types::b_date end_date)
 {
-  check_conn;
-  check_empty_string(db_name);
-  check_empty_string(collection_name);
+  ASSER_CONNECTION;
+  QD_ASSERT_STRING(db_name);
+  QD_ASSERT_STRING(collection_name);
   auto s = start_date != date_zero;
   auto e = end_date != date_zero;
   if (s && e)

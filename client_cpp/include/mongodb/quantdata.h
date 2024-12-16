@@ -33,10 +33,6 @@ class MongoDBException : public std::logic_error
 {
     using std::logic_error::logic_error;
 };
-class MongoDBInvalidArgs : public MongoDBException
-{
-    using MongoDBException::MongoDBException;
-};
 
 void MongoConnect(const char *host,
                   int port = 27017,
