@@ -44,11 +44,16 @@ enable_testing()
 # test duckdb
 add_executable(test_duckdb "${CMAKE_CURRENT_SOURCE_DIR}/test/test_duckdb.cpp")
 target_link_libraries(test_duckdb qdduckdb)
-add_test(NAME "test_duckdb" COMMAND "test_duckdb")
+add_test(NAME "test_duckdb" COMMAND "test_duckdb" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 set_tests_properties("test_duckdb" PROPERTIES FAIL_REGULAR_EXPRESSION "error")
 
 # test mongodb
 add_executable(test_mongodb "${CMAKE_CURRENT_SOURCE_DIR}/test/test_mongodb.cpp")
 target_link_libraries(test_mongodb qdmongodb)
-add_test(NAME "test_mongodb" COMMAND "test_mongodb")
+add_test(NAME "test_mongodb" COMMAND "test_mongodb" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 set_tests_properties("test_mongodb" PROPERTIES FAIL_REGULAR_EXPRESSION "error")
+
+# test datetime
+add_executable(test_datetime "${CMAKE_CURRENT_SOURCE_DIR}/test/test_datetime.cpp")
+target_link_libraries(test_datetime)
+add_test(NAME "test_datetime" COMMAND "test_datetime" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")

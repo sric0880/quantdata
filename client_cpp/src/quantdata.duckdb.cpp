@@ -1,9 +1,9 @@
-#pragma warning(disable :4996)
-#include <ctime>
+#pragma warning(disable : 4996)
 #include <iostream>
 
 #include "duckdb/quantdata.h"
 #include "quantdata.macros.h"
+#include "datetime.h"
 
 duckdb_connection conn_duckdb;
 duckdb_database db;
@@ -55,7 +55,7 @@ void DuckDBAttach(const char *uri)
   auto dot = _uri.rfind('.');
   auto dbname = _uri.substr(sep + 1, dot - sep - 1);
   int cx = std::snprintf(buf, 200, "ATTACH IF NOT EXISTS '%s' as %s (READ_ONLY);", uri, dbname.c_str());
-  QD_ASSERT((cx>=0&&cx<200), "uri too long");
+  QD_ASSERT((cx >= 0 && cx < 200), "uri too long");
   duckdb_prepared_statement stmt;
   DuckDBGuard guard1(stmt);
   if (duckdb_prepare(conn_duckdb, buf, &stmt) == DuckDBError)
@@ -89,7 +89,7 @@ DuckDBArrays DuckDBGetArray(const char *db_name,
   if (filter && filter[0])
   {
     cx += std::snprintf(query + cx, 200 - cx, "WHERE %s", filter);
-    QD_ASSERT((cx>=0&&cx<200), "query statement too long");
+    QD_ASSERT((cx >= 0 && cx < 200), "query statement too long");
   }
   duckdb_result res;
   if (duckdb_query(conn_duckdb, query, &res) == DuckDBError)
@@ -108,14 +108,14 @@ DuckDBArrays DuckDBGetArrayLastRows(const char *db_name,
 {
   char query[200]{};
   int cx = std::snprintf(query, 200, "SELECT * FROM (select %s FROM %s.%s ", attrs, db_name, tablename);
-  QD_ASSERT((cx>=0&&cx<200), "query statement too long");
+  QD_ASSERT((cx >= 0 && cx < 200), "query statement too long");
   if (filter && filter[0])
   {
     cx += std::snprintf(query + cx, 200 - cx, "WHERE %s", filter);
-    QD_ASSERT((cx>=0&&cx<200), "query statement too long");
+    QD_ASSERT((cx >= 0 && cx < 200), "query statement too long");
   }
   std::snprintf(query + cx, 200 - cx, "ORDER BY dt DESC LIMIT %d) ORDER BY dt ASC;", N);
-  QD_ASSERT((cx>=0&&cx<200), "query statement too long");
+  QD_ASSERT((cx >= 0 && cx < 200), "query statement too long");
   duckdb_result res;
   if (duckdb_query(conn_duckdb, query, &res) == DuckDBError)
   {
@@ -236,38 +236,22 @@ std::string ConvertToString(duckdb_result *result, const duckdb_type type, const
   // duckdb_timestamp, in microseconds
   case DUCKDB_TYPE_TIMESTAMP:
   {
-    auto ts = ((int64_t *)array)[row];
-    time_t t = ts / 1000000;
-    char timeString[std::size("yyyy-mm-dd hh:mm:ss")];
-    std::strftime(std::data(timeString), std::size(timeString), "%F %T", std::gmtime(&t));
-    return std::string(std::data(timeString), std::size(timeString));
+    return isoformat_microsec(((int64_t *)array)[row]);
   }
   // duckdb_timestamp, in seconds
   case DUCKDB_TYPE_TIMESTAMP_S:
   {
-    auto ts = ((int64_t *)array)[row];
-    time_t t = ts;
-    char timeString[std::size("yyyy-mm-dd hh:mm:ss")];
-    std::strftime(std::data(timeString), std::size(timeString), "%F %T", std::gmtime(&t));
-    return std::string(std::data(timeString), std::size(timeString));
+    return isoformat(((int64_t *)array)[row]);
   }
   // duckdb_timestamp, in milliseconds
   case DUCKDB_TYPE_TIMESTAMP_MS:
   {
-    auto ts = ((int64_t *)array)[row];
-    time_t t = ts / 1000;
-    char timeString[std::size("yyyy-mm-dd hh:mm:ss")];
-    std::strftime(std::data(timeString), std::size(timeString), "%F %T", std::gmtime(&t));
-    return std::string(std::data(timeString), std::size(timeString));
+    return isoformat_millisec(((int64_t *)array)[row]);
   }
   // duckdb_timestamp, in nanoseconds
   case DUCKDB_TYPE_TIMESTAMP_NS:
   {
-    auto ts = ((int64_t *)array)[row];
-    time_t t = ts / 1000000000;
-    char timeString[std::size("yyyy-mm-dd hh:mm:ss")];
-    std::strftime(std::data(timeString), std::size(timeString), "%F %T", std::gmtime(&t));
-    return std::string(std::data(timeString), std::size(timeString));
+    return isoformat_nanosec(((int64_t *)array)[row]);
   }
   // duckdb_timestamp
   case DUCKDB_TYPE_TIMESTAMP_TZ:
