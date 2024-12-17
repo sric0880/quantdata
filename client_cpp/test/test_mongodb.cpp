@@ -13,7 +13,9 @@ void test_connection()
 
 void test_get_array()
 {
-  auto cursor = MongoGetData("cn_stock", "stocks_basic_info");
+  options::find opts;
+  opts.projection(make_document(kvp("_id", false)));
+  auto cursor = MongoGetData("finance", "basic_info_stocks", opts);
   for (auto &&doc : cursor)
   {
     std::cout << to_json(doc) << std::endl;
@@ -22,7 +24,7 @@ void test_get_array()
 
 void test_get_trade_cal()
 {
-  // const char *db = "cn_stock";
+  // const char *db = "finance";
   // auto cursor = MongoGetTradeCal(db);
   // auto cursor1 = MongoGetTradeCal(
   //     db,

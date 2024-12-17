@@ -10,7 +10,7 @@
 instance inst;
 client *conn_mongodb = nullptr;
 
-#define ASSER_CONNECTION                                   \
+#define ASSER_CONNECTION                             \
   if (!conn_mongodb)                                 \
   {                                                  \
     throw MongoDBException("mongodb not connected"); \
@@ -25,7 +25,7 @@ void MongoConnect(const char *host,
 {
   char buf[200]{0};
   int cx = std::snprintf(buf, 200, "mongodb://%s:%s@%s:%d?authSource=%s&authMechanism=%s", user, password, host, port, authSource, authMechanism);
-  QD_ASSERT((cx>=0&&cx<200), "mongo connect statement too long");
+  QD_ASSERT((cx >= 0 && cx < 200), "mongo connect statement too long");
   if (conn_mongodb)
     return;
   conn_mongodb = new client(uri(buf));
@@ -38,32 +38,23 @@ void MongoClose()
   conn_mongodb = nullptr;
 }
 
+/**
+ * mongodb find
+ * options.limit(int)
+ * options.sort(view_or_value)
+ * options.projection(view_or_value)
+ */
 cursor MongoGetData(
     const char *db_name,
     const char *collection_name,
     document::view_or_value filter,
-    document::view_or_value sort_by,
-    document::view_or_value projection,
-    int max_count)
+    const options::find &options)
 {
   ASSER_CONNECTION;
   QD_ASSERT_STRING(db_name);
   QD_ASSERT_STRING(collection_name);
   collection coll = (*conn_mongodb)[db_name][collection_name];
-  options::find opts;
-  if (max_count > 0)
-  {
-    opts.limit(max_count);
-  }
-  if (!sort_by.view().empty())
-  {
-    opts.sort(sort_by);
-  }
-  if (projection.view().empty())
-  {
-    opts.projection(projection);
-  }
-  return coll.find(filter, opts);
+  return coll.find(filter, options);
 }
 
 cursor MongoGetTradeCal(const char *db_name,
