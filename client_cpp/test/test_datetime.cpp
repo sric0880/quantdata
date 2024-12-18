@@ -46,7 +46,17 @@ int main(int, char **)
   QD_ASSERT("2024-07-29 00:00:00.999999" == isoformat(fromisoformat("2024-07-29 00:00:00.999999")), "");
   QD_ASSERT("2024-07-29 00:00:00.999000" == isoformat(fromisoformat("2024-07-29 00:00:00.999")), "");
 
+  QD_ASSERT(fromtimestamp(sec.count()) == time_point<system_clock>(sec), "");
   QD_ASSERT(fromtimestamp_milli(milli.count()) == time_point<system_clock>(milli), "");
   QD_ASSERT(fromtimestamp_micro(micro.count()) == time_point<system_clock>(micro), "");
   QD_ASSERT(fromtimestamp_nano(nano.count()) == time_point<system_clock>(duration_cast<microseconds>(nano)), "");
+
+  QD_ASSERT(datetime::fromtimestamp<std::micro>(micro.count()).isoformat() == "2024-12-17 05:18:21.444555", "");
+  QD_ASSERT(datetime::fromtimestamp<std::milli>(micro).isoformat() == "2024-12-17 05:18:21.444", "");
+  QD_ASSERT(datetime::fromtimestamp(sec.count()).isoformat() == "2024-12-17 05:18:21", "");
+  QD_ASSERT(datetime::fromtimestamp(sec).isoformat() == "2024-12-17 05:18:21", "");
+  QD_ASSERT(Datetime<std::milli>({2024, 12, 17}, {5, 18, 21, 444}).isoformat() == "2024-12-17 05:18:21.444", "");
+  QD_ASSERT(Datetime<std::milli>(2024, 12, 17, 5, 18, 21, 444).isoformat() == "2024-12-17 05:18:21.444", "");
+  QD_ASSERT(Datetime(2024, 12, 17, 5, 18, 21).isoformat() == "2024-12-17 05:18:21", "");
+  // QD_ASSERT(Datetime<std::milli>({2024, 12, 17}, {5, 18, 21, 444}).isoformat() == "2024-12-17 05:18:21.444", "");
 }
