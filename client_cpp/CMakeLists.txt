@@ -15,24 +15,26 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 
 find_library(duckdb duckdb REQUIRED)
 
+add_library(qddatetime STATIC
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/datetime.cpp")
+
 add_library(qdduckdb SHARED
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.duckdb.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/datetime.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/duckdb/duckdb.hpp"
 )
-target_link_libraries(qdduckdb PUBLIC ${duckdb} PUBLIC fmt::fmt)
+target_link_libraries(qdduckdb PUBLIC ${duckdb} PUBLIC fmt::fmt PRIVATE qddatetime)
 
 
 find_package(mongocxx REQUIRED)
 find_package(bsoncxx REQUIRED)
 add_library(qdmongodb SHARED
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.mongodb.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/datetime.cpp"
 )
 target_link_libraries(qdmongodb
   PUBLIC mongo::bsoncxx_shared
   PUBLIC mongo::mongocxx_shared
-  PUBLIC fmt::fmt)
+  PUBLIC fmt::fmt
+  PRIVATE qddatetime)
 
 
 find_package(yaml-cpp CONFIG REQUIRED)
@@ -40,7 +42,6 @@ add_library(quantdata SHARED
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.duckdb.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/duckdb/duckdb.hpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.mongodb.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/datetime.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.cpp"
 )
 target_link_libraries(quantdata
@@ -48,7 +49,8 @@ target_link_libraries(quantdata
   PUBLIC mongo::bsoncxx_shared
   PUBLIC mongo::mongocxx_shared
   PUBLIC yaml-cpp::yaml-cpp
-  PUBLIC fmt::fmt)
+  PUBLIC fmt::fmt
+  PRIVATE qddatetime)
 
 
 # For CTest
@@ -67,11 +69,13 @@ add_test(NAME "test_mongodb" COMMAND "test_mongodb" WORKING_DIRECTORY "${CMAKE_C
 set_tests_properties("test_mongodb" PROPERTIES FAIL_REGULAR_EXPRESSION "error")
 
 # test datetime
-add_executable(test_datetime "${CMAKE_CURRENT_SOURCE_DIR}/test/test_datetime.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/src/datetime.cpp")
-target_link_libraries(test_datetime)
+add_executable(test_datetime "${CMAKE_CURRENT_SOURCE_DIR}/test/test_datetime.cpp")
+target_link_libraries(test_datetime qddatetime)
 add_test(NAME "test_datetime" COMMAND "test_datetime" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # test quantdata
 add_executable(test_quantdata "${CMAKE_CURRENT_SOURCE_DIR}/test/test_quantdata.cpp")
 target_link_libraries(test_quantdata quantdata)
 add_test(NAME "test_quantdata" COMMAND "test_quantdata" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+
+# for Install
