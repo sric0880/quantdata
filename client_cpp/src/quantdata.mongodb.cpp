@@ -3,6 +3,7 @@
 #include <mongocxx/uri.hpp>
 #include <mongocxx/client.hpp>
 #include <mongocxx/collection.hpp>
+#include <fmt/format.h>
 
 #include "mongodb/quantdata.h"
 #include "quantdata.macros.h"
@@ -18,19 +19,17 @@ inline void assert_connected()
   }
 }
 
-void MongoConnect(const char *host,
+void MongoConnect(std::string_view host,
                   int port,
-                  const char *user,
-                  const char *password,
-                  const char *authSource,
-                  const char *authMechanism)
+                  std::string_view user,
+                  std::string_view password,
+                  std::string_view authSource,
+                  std::string_view authMechanism)
 {
-  char buf[200]{0};
-  int cx = std::snprintf(buf, 200, "mongodb://%s:%s@%s:%d?authSource=%s&authMechanism=%s", user, password, host, port, authSource, authMechanism);
-  QD_ASSERT((cx >= 0 && cx < 200), "mongo connect statement too long");
+  auto uri_string = fmt::format("mongodb://{}:{}@{}:{}?authSource={}&authMechanism={}", user, password, host, port, authSource, authMechanism);
   if (conn_mongodb)
     return;
-  conn_mongodb = new client(uri(buf));
+  conn_mongodb = new client(uri(uri_string));
 }
 
 void MongoClose()
@@ -47,8 +46,8 @@ void MongoClose()
  * options.projection(view_or_value)
  */
 cursor MongoGetData(
-    const char *db_name,
-    const char *collection_name,
+    std::string_view db_name,
+    std::string_view collection_name,
     document::view_or_value filter,
     const options::find &options)
 {
@@ -59,15 +58,15 @@ cursor MongoGetData(
   return coll.find(filter, options);
 }
 
-cursor MongoGetTradeCal(const char *db_name, const char *collection_name)
+cursor MongoGetTradeCal(std::string_view db_name, std::string_view collection_name)
 {
   assert_connected();
   QD_ASSERT_STRING(db_name);
   // {"status" : 1}
   return MongoGetData(db_name, collection_name, make_document(kvp("status", 1)));
 }
-cursor MongoGetTradeCalGte(const char *db_name,
-                           const char *collection_name,
+cursor MongoGetTradeCalGte(std::string_view db_name,
+                           std::string_view collection_name,
                            const milliseconds &start_date)
 {
   assert_connected();
@@ -80,8 +79,8 @@ cursor MongoGetTradeCalGte(const char *db_name,
   auto doc = in_array << close_array << finalize;
   return MongoGetData(db_name, collection_name, doc.view());
 }
-cursor MongoGetTradeCalLte(const char *db_name,
-                           const char *collection_name,
+cursor MongoGetTradeCalLte(std::string_view db_name,
+                           std::string_view collection_name,
                            const milliseconds &end_date)
 {
   assert_connected();
@@ -94,8 +93,8 @@ cursor MongoGetTradeCalLte(const char *db_name,
   auto doc = in_array << close_array << finalize;
   return MongoGetData(db_name, collection_name, doc.view());
 }
-cursor MongoGetTradeCalBetween(const char *db_name,
-                               const char *collection_name,
+cursor MongoGetTradeCalBetween(std::string_view db_name,
+                               std::string_view collection_name,
                                const milliseconds &start_date,
                                const milliseconds &end_date)
 {
@@ -118,7 +117,7 @@ cursor MongoGetTradeCalBetween(const char *db_name,
   return MongoGetData(db_name, collection_name, doc.view());
 }
 
-std::optional<milliseconds> MongoGetLastTradeDt(const char *db_name, const char *collection_name, const milliseconds &dt)
+std::optional<milliseconds> MongoGetLastTradeDt(std::string_view db_name, std::string_view collection_name, const milliseconds &dt)
 {
   assert_connected();
   QD_ASSERT_STRING(db_name);
@@ -135,7 +134,7 @@ std::optional<milliseconds> MongoGetLastTradeDt(const char *db_name, const char 
   return doc_value.has_value() ? std::optional<milliseconds>(doc_value.value()["_id"].get_date().value) : std::nullopt;
 }
 
-std::optional<milliseconds> MongoGetNextTradeDt(const char *db_name, const char *collection_name, const milliseconds &dt)
+std::optional<milliseconds> MongoGetNextTradeDt(std::string_view db_name, std::string_view collection_name, const milliseconds &dt)
 {
   assert_connected();
   QD_ASSERT_STRING(db_name);

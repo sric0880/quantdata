@@ -1,5 +1,6 @@
 #pragma warning(disable : 4996)
 #include <iostream>
+#include <fmt/format.h>
 
 #include "duckdb/quantdata.h"
 #include "quantdata.macros.h"
@@ -8,7 +9,7 @@
 duckdb_connection conn_duckdb;
 duckdb_database db;
 
-void DuckDBConnect(const char *memory_limit,
+void DuckDBConnect(std::string_view memory_limit,
                    int threads_limit,
                    bool shared_memory)
 {
@@ -25,8 +26,8 @@ void DuckDBConnect(const char *memory_limit,
     std::string &&threads_limit_str = std::to_string(threads_limit);
     duckdb_set_config(config, "threads", threads_limit_str.c_str());
   }
-  if (memory_limit)
-    duckdb_set_config(config, "max_memory", memory_limit);
+  if (!memory_limit.empty())
+    duckdb_set_config(config, "max_memory", memory_limit.data());
   const char *path;
   if (shared_memory)
     path = ":memory:lzq01";
@@ -46,19 +47,16 @@ void DuckDBConnect(const char *memory_limit,
   }
 }
 
-void DuckDBAttach(const char *uri)
+void DuckDBAttach(std::string_view uri)
 {
   QD_ASSERT_STRING(uri);
-  char buf[200]{0};
-  std::string _uri(uri);
-  auto sep = _uri.rfind('/');
-  auto dot = _uri.rfind('.');
-  auto dbname = _uri.substr(sep + 1, dot - sep - 1);
-  int cx = std::snprintf(buf, 200, "ATTACH IF NOT EXISTS '%s' as %s (READ_ONLY);", uri, dbname.c_str());
-  QD_ASSERT((cx >= 0 && cx < 200), "uri too long");
+  auto sep = uri.rfind('/');
+  auto dot = uri.rfind('.');
+  auto dbname = std::string_view(uri.data() + sep + 1, dot - sep - 1);
+  auto stmt_string = fmt::format("ATTACH IF NOT EXISTS '{}' as {} (READ_ONLY);", uri, dbname);
   duckdb_prepared_statement stmt;
   DuckDBGuard guard1(stmt);
-  if (duckdb_prepare(conn_duckdb, buf, &stmt) == DuckDBError)
+  if (duckdb_prepare(conn_duckdb, stmt_string.c_str(), &stmt) == DuckDBError)
   {
     throw DuckDBException(duckdb_prepare_error(stmt));
   }
@@ -76,23 +74,25 @@ void DuckDBClose()
   duckdb_close(&db);
 }
 
-DuckDBArrays DuckDBGetArray(const char *db_name,
-                            const char *tablename,
-                            const char *attrs,
-                            const char *filter)
+DuckDBArrays DuckDBGetArray(std::string_view db_name,
+                            std::string_view tablename,
+                            std::string_view attrs,
+                            std::string_view filter)
 {
   QD_ASSERT_STRING(db_name);
   QD_ASSERT_STRING(tablename);
-  char query[200]{};
-  int cx = std::snprintf(query, 200, "select %s FROM %s.%s ", attrs, db_name, tablename);
-  QD_ASSERT((cx >= 0 && cx < 200), "query statement too long");
-  if (filter && filter[0])
+  QD_ASSERT_STRING(attrs);
+  std::string query;
+  if (filter.empty())
   {
-    cx += std::snprintf(query + cx, 200 - cx, "WHERE %s", filter);
-    QD_ASSERT((cx >= 0 && cx < 200), "query statement too long");
+    query = fmt::format("select {} FROM {}.{};", attrs, db_name, tablename);
+  }
+  else
+  {
+    query = fmt::format("SELECT {} FROM {}.{} WHERE {};", attrs, db_name, tablename, filter);
   }
   duckdb_result res;
-  if (duckdb_query(conn_duckdb, query, &res) == DuckDBError)
+  if (duckdb_query(conn_duckdb, query.c_str(), &res) == DuckDBError)
   {
     DuckDBGuard guard(res);
     throw DuckDBException(duckdb_result_error(&res));
@@ -100,24 +100,23 @@ DuckDBArrays DuckDBGetArray(const char *db_name,
   return DuckDBArrays(res);
 }
 
-DuckDBArrays DuckDBGetArrayLastRows(const char *db_name,
-                                    const char *tablename,
-                                    const char *attrs,
-                                    const char *filter,
+DuckDBArrays DuckDBGetArrayLastRows(std::string_view db_name,
+                                    std::string_view tablename,
+                                    std::string_view attrs,
+                                    std::string_view filter,
                                     int N)
 {
-  char query[200]{};
-  int cx = std::snprintf(query, 200, "SELECT * FROM (select %s FROM %s.%s ", attrs, db_name, tablename);
-  QD_ASSERT((cx >= 0 && cx < 200), "query statement too long");
-  if (filter && filter[0])
+  std::string query;
+  if (filter.empty())
   {
-    cx += std::snprintf(query + cx, 200 - cx, "WHERE %s", filter);
-    QD_ASSERT((cx >= 0 && cx < 200), "query statement too long");
+    query = fmt::format("SELECT * FROM (SELECT {} FROM {}.{} ORDER BY dt DESC LIMIT {}) ORDER BY dt ASC;", attrs, db_name, tablename, N);
   }
-  std::snprintf(query + cx, 200 - cx, "ORDER BY dt DESC LIMIT %d) ORDER BY dt ASC;", N);
-  QD_ASSERT((cx >= 0 && cx < 200), "query statement too long");
+  else
+  {
+    query = fmt::format("SELECT * FROM (SELECT {} FROM {}.{} WHERE {} ORDER BY dt DESC LIMIT {}) ORDER BY dt ASC;", attrs, db_name, tablename, filter, N);
+  }
   duckdb_result res;
-  if (duckdb_query(conn_duckdb, query, &res) == DuckDBError)
+  if (duckdb_query(conn_duckdb, query.c_str(), &res) == DuckDBError)
   {
     DuckDBGuard guard(res);
     throw DuckDBException(duckdb_result_error(&res));

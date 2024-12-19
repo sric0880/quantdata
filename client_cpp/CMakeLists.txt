@@ -9,6 +9,7 @@ if(MSVC)
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
+find_package(fmt CONFIG REQUIRED)
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 
@@ -19,7 +20,7 @@ add_library(qdduckdb SHARED
   "${CMAKE_CURRENT_SOURCE_DIR}/src/datetime.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/duckdb/duckdb.hpp"
 )
-target_link_libraries(qdduckdb PUBLIC ${duckdb})
+target_link_libraries(qdduckdb PUBLIC ${duckdb} PUBLIC fmt::fmt)
 
 
 find_package(mongocxx REQUIRED)
@@ -28,9 +29,10 @@ add_library(qdmongodb SHARED
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.mongodb.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/datetime.cpp"
 )
-target_link_libraries(qdmongodb PUBLIC mongo::bsoncxx_shared PUBLIC mongo::mongocxx_shared)
+target_link_libraries(qdmongodb PUBLIC mongo::bsoncxx_shared PUBLIC mongo::mongocxx_shared PUBLIC fmt::fmt)
 
 
+find_package(yaml-cpp CONFIG REQUIRED)
 add_library(quantdata SHARED
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.duckdb.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/duckdb/duckdb.hpp"
@@ -38,7 +40,7 @@ add_library(quantdata SHARED
   "${CMAKE_CURRENT_SOURCE_DIR}/src/datetime.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.cpp"
 )
-target_link_libraries(quantdata PUBLIC ${duckdb} PUBLIC mongo::bsoncxx_shared PUBLIC mongo::mongocxx_shared)
+target_link_libraries(quantdata PUBLIC ${duckdb} PUBLIC mongo::bsoncxx_shared PUBLIC mongo::mongocxx_shared PUBLIC yaml-cpp::yaml-cpp PUBLIC fmt::fmt)
 
 
 # For CTest

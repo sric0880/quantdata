@@ -97,8 +97,6 @@ const T *DuckDBArrays::FetchArray(idx_t chunk_idx, idx_t col_idx) const
 
 /**
  * @param
- *  uri: path/to/${file}.db
- * @param
  *  memory_limit: like "10GB"
  * @param
  *  threads_limit: The number of total threads used by the system
@@ -108,25 +106,25 @@ const T *DuckDBArrays::FetchArray(idx_t chunk_idx, idx_t col_idx) const
  * more configuration: https://duckdb.org/docs/configuration/overview.html#configuration-reference
  * more about connections: https://duckdb.org/docs/api/python/dbapi.html
  */
-void DuckDBConnect(const char *memory_limit = nullptr,
+void DuckDBConnect(std::string_view memory_limit = "",
                    int threads_limit = 0,
                    bool shared_memory = false);
 /**
  * @param
  *  uri: path/to/${file}.db
  */
-void DuckDBAttach(const char *uri);
+void DuckDBAttach(std::string_view uri);
 /**
  * @see https://duckdb.org/docs/api/c/query
  */
-DuckDBArrays DuckDBGetArray(const char *db_name,
-                            const char *tablename,
-                            const char *attrs = "*",
-                            const char *filter = nullptr);
-DuckDBArrays DuckDBGetArrayLastRows(const char *db_name,
-                                    const char *tablename,
-                                    const char *attrs = "*",
-                                    const char *filter = nullptr,
+DuckDBArrays DuckDBGetArray(std::string_view db_name,
+                            std::string_view tablename,
+                            std::string_view attrs = "*",
+                            std::string_view filter = "");
+DuckDBArrays DuckDBGetArrayLastRows(std::string_view db_name,
+                                    std::string_view tablename,
+                                    std::string_view attrs = "*",
+                                    std::string_view filter = "",
                                     int N = 1);
 void DuckDBClose();
 

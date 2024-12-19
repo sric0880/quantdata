@@ -27,7 +27,7 @@
       }                                                                 \
    } while (0)
 
-#define QD_ASSERT_STRING(param)                                          \
+#define QD_ASSERT_CHARS(param)                                           \
    do                                                                    \
    {                                                                     \
       if ((QD_UNLIKELY(param == NULL || !param[0])))                     \
@@ -35,6 +35,19 @@
          fprintf(stderr,                                                 \
                  "The parameter: %s, in function %s, cannot be EMPTY\n", \
                  #param,                                                 \
+                 QD_FUNC);                                               \
+         abort();                                                        \
+      }                                                                  \
+   } while (0)
+
+#define QD_ASSERT_STRING(str)                                            \
+   do                                                                    \
+   {                                                                     \
+      if ((QD_UNLIKELY(str.empty())))                                    \
+      {                                                                  \
+         fprintf(stderr,                                                 \
+                 "The parameter: %s, in function %s, cannot be EMPTY\n", \
+                 #str,                                                   \
                  QD_FUNC);                                               \
          abort();                                                        \
       }                                                                  \

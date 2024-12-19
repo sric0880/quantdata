@@ -39,12 +39,12 @@ class MongoDBException : public std::logic_error
     using std::logic_error::logic_error;
 };
 
-void MongoConnect(const char *host,
+void MongoConnect(std::string_view host,
                   int port = 27017,
-                  const char *user = "root",
-                  const char *password = "admin",
-                  const char *authSource = "admin",
-                  const char *authMechanism = "SCRAM-SHA-1");
+                  std::string_view user = "root",
+                  std::string_view password = "admin",
+                  std::string_view authSource = "admin",
+                  std::string_view authMechanism = "SCRAM-SHA-1");
 void MongoClose();
 
 // cursor 只能遍历一遍
@@ -71,26 +71,26 @@ std::vector<T> MongoFetchArrays(cursor &cr)
 std::unordered_map<std::string, std::vector<types::bson_value::value>> MongoFetchDict(cursor &cr);
 
 cursor MongoGetData(
-    const char *db_name,
-    const char *collection_name,
+    std::string_view db_name,
+    std::string_view collection_name,
     document::view_or_value filter,
     const options::find &options);
 inline cursor MongoGetData(
-    const char *db_name,
-    const char *collection_name)
+    std::string_view db_name,
+    std::string_view collection_name)
 {
     return MongoGetData(db_name, collection_name, empty_view, default_find_options);
 }
 inline cursor MongoGetData(
-    const char *db_name,
-    const char *collection_name,
+    std::string_view db_name,
+    std::string_view collection_name,
     document::view_or_value filter)
 {
     return MongoGetData(db_name, collection_name, filter, default_find_options);
 }
 inline cursor MongoGetData(
-    const char *db_name,
-    const char *collection_name,
+    std::string_view db_name,
+    std::string_view collection_name,
     const options::find &options)
 {
     return MongoGetData(db_name, collection_name, empty_view, options);
@@ -98,20 +98,20 @@ inline cursor MongoGetData(
 /**
  * 返回从start_date到end_date(包括本身)的交易日期
  */
-cursor MongoGetTradeCal(const char *db_name, const char *collection_name);
-cursor MongoGetTradeCalGte(const char *db_name,
-                           const char *collection_name,
+cursor MongoGetTradeCal(std::string_view db_name, std::string_view collection_name);
+cursor MongoGetTradeCalGte(std::string_view db_name,
+                           std::string_view collection_name,
                            const milliseconds &start_date);
-cursor MongoGetTradeCalLte(const char *db_name,
-                           const char *collection_name,
+cursor MongoGetTradeCalLte(std::string_view db_name,
+                           std::string_view collection_name,
                            const milliseconds &end_date);
-cursor MongoGetTradeCalBetween(const char *db_name,
-                               const char *collection_name,
+cursor MongoGetTradeCalBetween(std::string_view db_name,
+                               std::string_view collection_name,
                                const milliseconds &start_date,
                                const milliseconds &end_date);
-std::optional<milliseconds> MongoGetLastTradeDt(const char *db_name,
-                                                const char *collection_name,
+std::optional<milliseconds> MongoGetLastTradeDt(std::string_view db_name,
+                                                std::string_view collection_name,
                                                 const milliseconds &dt);
-std::optional<milliseconds> MongoGetNextTradeDt(const char *db_name,
-                                                const char *collection_name,
+std::optional<milliseconds> MongoGetNextTradeDt(std::string_view db_name,
+                                                std::string_view collection_name,
                                                 const milliseconds &dt);

@@ -1,0 +1,30 @@
+duckdb:
+  uri:
+    - "/Users/qiong/Desktop/quantdata/datas/duckdb/finance.db"
+    - "/Users/qiong/Desktop/quantdata/datas/duckdb/finance_ticks_ctpfuture.db"
+mongodb:
+  host: "127.0.0.1"
+  port: 27017
+  user: "root"
+  password: "admin"
+
+duckdb-astock:
+  uri:
+    - "/Users/qiong/Desktop/quantdata/datas/duckdb/finance.db"
+
+duckdb-ctp:
+  uri:
+    - "/Users/qiong/Desktop/quantdata/datas/duckdb/finance_ticks_ctpfuture.db"
+
+services:
+  bt:
+    duckdb: duckdb
+    mongodb: mongodb
+  bt-astock:
+    duckdb: duckdb-astock
+    mongodb: mongodb
+  bt-ctp:
+    duckdb: duckdb-ctp
+    mongodb: mongodb
+  live:
+    mongodb: mongodb
