@@ -1,6 +1,6 @@
 #include <iostream>
-#include "quantdata.macros.h"
-#include "datetime.h"
+#include "quantdata/macros.h"
+#include "quantdata/datetime.h"
 
 int main(int, char **)
 {

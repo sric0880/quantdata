@@ -1,6 +1,6 @@
 ﻿#include <iostream>
 #include <cassert>
-#include "duckdb/quantdata.h"
+#include "quantdata/duckdb.h"
 
 void test_connect()
 {

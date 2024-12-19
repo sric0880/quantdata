@@ -1,5 +1,5 @@
 #include <iostream>
-#include "quantdata.h"
+#include "quantdata/init.h"
 
 int main(int, char **)
 {

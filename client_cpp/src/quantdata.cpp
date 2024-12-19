@@ -1,4 +1,4 @@
-﻿#include "quantdata.h"
+﻿#include "quantdata/init.h"
 
 void _InitDuckDB(const YAML::Node &config)
 {

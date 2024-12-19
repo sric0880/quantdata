@@ -5,8 +5,8 @@
 #include <mongocxx/collection.hpp>
 #include <fmt/format.h>
 
-#include "mongodb/quantdata.h"
-#include "quantdata.macros.h"
+#include "quantdata/mongodb.h"
+#include "quantdata/macros.h"
 
 instance inst;
 client *conn_mongodb = nullptr;

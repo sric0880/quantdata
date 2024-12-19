@@ -2,9 +2,9 @@
 #include <iostream>
 #include <fmt/format.h>
 
-#include "duckdb/quantdata.h"
-#include "quantdata.macros.h"
-#include "datetime.h"
+#include "quantdata/duckdb.h"
+#include "quantdata/macros.h"
+#include "quantdata/datetime.h"
 
 duckdb_connection conn_duckdb;
 duckdb_database db;

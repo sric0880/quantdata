@@ -1,7 +1,7 @@
 ﻿#include <iostream>
-#include "mongodb/quantdata.h"
-#include "datetime.h"
-#include "quantdata.macros.h"
+#include "quantdata/mongodb.h"
+#include "quantdata/datetime.h"
+#include "quantdata/macros.h"
 
 const char *host = "localhost";
 
