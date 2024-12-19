@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(quantdata CXX)
+project(quantdata VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -79,16 +79,41 @@ target_link_libraries(test_quantdata quantdata)
 add_test(NAME "test_quantdata" COMMAND "test_quantdata" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # for Install
-include(GNUInstallDirs)
-
+# example from https://cmake.org/cmake/help/latest/manual/cmake-packages.7.html#config-file-packages
 install(
-  TARGETS qddatetime
-  DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  TARGETS qddatetime qdduckdb qdmongodb quantdata
+  EXPORT quantdata_Targets
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include)
 
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/cmake/quantdataConfigVersion.cmake"
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY AnyNewerVersion
+)
+export(EXPORT quantdata_Targets
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake/quantdataTargets.cmake"
+  NAMESPACE quantdata::
+)
+set(ConfigPackageLocation lib/cmake/quantdata)
+install(EXPORT quantdata_Targets
+  FILE
+  quantdata_Targets.cmake
+  NAMESPACE
+  quantdata::
+  DESTINATION
+    ${ConfigPackageLocation}
+)
 install(
-  TARGETS qdduckdb qdmongodb quantdata
-  DESTINATION ${CMAKE_INSTALL_LIBDIR})
-
+  FILES
+    cmake/quantdataConfig.cmake
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake/quantdataConfigVersion.cmake"
+  DESTINATION
+    ${ConfigPackageLocation}
+)
 install(
   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/quantdata"
   DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
