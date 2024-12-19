@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <string>
-#include <chrono>
+#include <optional>
+#include <unordered_map>
 #include <mongocxx/cursor.hpp>
 #include <mongocxx/options/find.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
@@ -10,8 +11,11 @@
 #include <bsoncxx/builder/stream/array.hpp>
 #include <bsoncxx/builder/stream/helpers.hpp>
 #include <bsoncxx/document/view_or_value.hpp>
+#include <bsoncxx/types/bson_value/value.hpp>
 #include <bsoncxx/types.hpp>
 #include <bsoncxx/json.hpp>
+
+#include "datetime.h"
 
 using namespace bsoncxx::v_noabi;
 using namespace mongocxx::v_noabi;
@@ -27,7 +31,6 @@ using builder::stream::finalize;
 using builder::stream::open_array;
 using builder::stream::open_document;
 
-const static types::b_date date_zero(std::chrono::milliseconds::zero());
 const static document::view_or_value empty_view;
 const static options::find default_find_options;
 
@@ -43,6 +46,29 @@ void MongoConnect(const char *host,
                   const char *authSource = "admin",
                   const char *authMechanism = "SCRAM-SHA-1");
 void MongoClose();
+
+// cursor 只能遍历一遍
+template <class T = document::view>
+std::vector<T> MongoFetchArrays(cursor &cr)
+{
+    if (cr.begin() == cr.end())
+    {
+        return std::vector<T>();
+    }
+    else
+    {
+        std::vector<T> ret;
+        for (auto &doc : cr)
+        {
+            ret.emplace_back(doc);
+        }
+        return ret;
+    }
+}
+
+// cursor 只能遍历一遍
+// 该函数会复制一遍底层数据，使用 MongoFetchArrays 效率更高
+std::unordered_map<std::string, std::vector<types::bson_value::value>> MongoFetchDict(cursor &cr);
 
 cursor MongoGetData(
     const char *db_name,
@@ -72,9 +98,20 @@ inline cursor MongoGetData(
 /**
  * 返回从start_date到end_date(包括本身)的交易日期
  */
-cursor MongoGetTradeCal(const char *db_name,
-                        const char *collection_name = "trade_cal",
-                        types::b_date start_date = date_zero,
-                        types::b_date end_date = date_zero);
-// std::time_t mongo_get_last_trade_dt(std::time_t dt);
-// std::time_t mongo_get_next_trade_dt(std::time_t datetime);
+cursor MongoGetTradeCal(const char *db_name, const char *collection_name);
+cursor MongoGetTradeCalGte(const char *db_name,
+                           const char *collection_name,
+                           const milliseconds &start_date);
+cursor MongoGetTradeCalLte(const char *db_name,
+                           const char *collection_name,
+                           const milliseconds &end_date);
+cursor MongoGetTradeCalBetween(const char *db_name,
+                               const char *collection_name,
+                               const milliseconds &start_date,
+                               const milliseconds &end_date);
+std::optional<milliseconds> MongoGetLastTradeDt(const char *db_name,
+                                                const char *collection_name,
+                                                const milliseconds &dt);
+std::optional<milliseconds> MongoGetNextTradeDt(const char *db_name,
+                                                const char *collection_name,
+                                                const milliseconds &dt);

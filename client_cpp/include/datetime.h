@@ -1,3 +1,4 @@
+#pragma once
 #include <string>
 #include <ctime>
 #include <chrono>
@@ -14,7 +15,7 @@ class DatetimeInputError : public std::invalid_argument
   using std::invalid_argument::invalid_argument;
 };
 
-system_clock::time_point now()
+inline system_clock::time_point now()
 {
   return system_clock::now();
 }
@@ -55,52 +56,7 @@ constexpr system_clock::time_point fromtimestamp_nano(Interger nano)
 /**
  * system_clock 精度为微妙，纳秒会有精度丢失
  */
-system_clock::time_point fromisoformat(const char *time_string)
-{
-  std::tm t = {};
-  std::istringstream ss(time_string);
-  ss >> std::get_time(&t, "%F %T");
-  if (ss.fail())
-  {
-    throw DatetimeInputError(std::string(time_string) + " is invalid iso time format");
-  }
-  // mktime的实现会 += timezone
-  std::time_t sec = std::mktime(&t) - timezone;
-  auto tp = system_clock::from_time_t(sec);
-  char dot;
-  if (ss >> dot && dot == '.')
-  {
-    std::string subseconds;
-    std::getline(ss, subseconds);
-    for (char a : subseconds)
-    {
-      if (a < '0' || a > '9')
-      {
-        throw DatetimeInputError(std::string(time_string) + " is invalid iso time format");
-      }
-    }
-    auto len = subseconds.size();
-    if (len == 3)
-    {
-      tp += milliseconds(std::stoi(subseconds));
-    }
-    else if (len == 6)
-    {
-      tp += microseconds(std::stoi(subseconds));
-    }
-    else if (len > 6)
-    {
-      tp += microseconds(std::stoi(subseconds.substr(0, 6)));
-      fprintf(stderr, "fromisoformat %s will lose nanoseconds part %s\n", time_string, subseconds.substr(6).c_str());
-    }
-    else
-    {
-      throw DatetimeInputError(std::string(time_string) + " is invalid iso time format");
-    }
-    return tp;
-  }
-  return tp;
-}
+system_clock::time_point fromisoformat(const char *time_string);
 
 template <typename Interger>
 std::string isoformat(Interger sec)
@@ -164,7 +120,7 @@ std::string isoformat(duration<_Rep, _Period> time_since_epoch)
 }
 
 template <>
-std::string isoformat<nanoseconds::rep, nanoseconds::period>(nanoseconds time_since_epoch)
+inline std::string isoformat<nanoseconds::rep, nanoseconds::period>(nanoseconds time_since_epoch)
 {
   auto seconds_since_epoch = duration_cast<seconds>(time_since_epoch);
   auto subseconds = time_since_epoch - seconds_since_epoch;
@@ -172,7 +128,7 @@ std::string isoformat<nanoseconds::rep, nanoseconds::period>(nanoseconds time_si
 }
 
 template <>
-std::string isoformat<microseconds::rep, microseconds::period>(microseconds time_since_epoch)
+inline std::string isoformat<microseconds::rep, microseconds::period>(microseconds time_since_epoch)
 {
   auto seconds_since_epoch = duration_cast<seconds>(time_since_epoch);
   auto subseconds = time_since_epoch - seconds_since_epoch;
@@ -180,7 +136,7 @@ std::string isoformat<microseconds::rep, microseconds::period>(microseconds time
 }
 
 template <>
-std::string isoformat<milliseconds::rep, milliseconds::period>(milliseconds time_since_epoch)
+inline std::string isoformat<milliseconds::rep, milliseconds::period>(milliseconds time_since_epoch)
 {
   auto seconds_since_epoch = duration_cast<seconds>(time_since_epoch);
   auto subseconds = time_since_epoch - seconds_since_epoch;
@@ -188,7 +144,7 @@ std::string isoformat<milliseconds::rep, milliseconds::period>(milliseconds time
 }
 
 template <>
-std::string isoformat<system_clock::time_point>(system_clock::time_point tp)
+inline std::string isoformat<system_clock::time_point>(system_clock::time_point tp)
 {
   return isoformat(tp.time_since_epoch());
 }
@@ -230,23 +186,26 @@ struct Datetime
   Date date;
   Time<_Period> time;
 
-private:
-  precision ts_; /* timestamp since epoch */
-
-public:
-  Datetime() = default;
-  Datetime(Date d, Time<_Period> t) : date(d), time(t)
+  constexpr Datetime(Date d, Time<_Period> t) : date(d), time(t)
   {
-    to_duration();
+    std::tm _tm{};
+    _tm.tm_year = date.year - 1900;
+    _tm.tm_mon = date.mon - 1;
+    _tm.tm_mday = date.day;
+    _tm.tm_hour = time.hour;
+    _tm.tm_min = time.min;
+    _tm.tm_sec = time.sec;
+    std::time_t sec = std::mktime(&_tm) - timezone;
+    ts_ = precision(time.subseconds) + seconds(sec);
   }
-  Datetime(int year, int mon, int day, int hour, int min, int sec) : Datetime({year, mon, day}, {hour, min, sec, 0}) {};
-  Datetime(int year, int mon, int day, int hour, int min, int sec, int subseconds) : Datetime({year, mon, day}, {hour, min, sec, subseconds})
+  constexpr Datetime(int year, int mon, int day, int hour = 0, int min = 0, int sec = 0) : Datetime({year, mon, day}, {hour, min, sec, 0}) {};
+  constexpr Datetime(int year, int mon, int day, int hour, int min, int sec, int subseconds) : Datetime({year, mon, day}, {hour, min, sec, subseconds})
   {
     static_assert(!std::is_same_v<_Period, ratio_one>);
   };
 
   template <class _Rep, class __Period>
-  explicit Datetime(duration<_Rep, __Period> time_since_epoch) : ts_(duration_cast<precision>(time_since_epoch))
+  constexpr explicit Datetime(duration<_Rep, __Period> time_since_epoch) : ts_(duration_cast<precision>(time_since_epoch))
   {
     seconds seconds_since_epoch = duration_cast<seconds>(ts_);
     precision subseconds = ts_ - seconds_since_epoch;
@@ -274,15 +233,6 @@ public:
 
   constexpr const precision &to_duration()
   {
-    std::tm _tm{};
-    _tm.tm_year = date.year - 1900;
-    _tm.tm_mon = date.mon - 1;
-    _tm.tm_mday = date.day;
-    _tm.tm_hour = time.hour;
-    _tm.tm_min = time.min;
-    _tm.tm_sec = time.sec;
-    std::time_t sec = std::mktime(&_tm) - timezone;
-    ts_ = precision(time.subseconds) + seconds(sec);
     return ts_;
   }
 
@@ -296,26 +246,35 @@ public:
   {
     return ::fromtimestamp(ts_);
   }
+
+private:
+  precision ts_; /* timestamp since epoch */
 };
+
+template <class _Period>
+bool operator==(const Datetime<_Period> &x, const Datetime<_Period> &y)
+{
+  return x.timestamp() == y.timestamp();
+}
 
 namespace datetime
 {
   template <class _Period = ratio_one, class _Rep, class __Period>
-  Datetime<_Period> fromtimestamp(duration<_Rep, __Period> time_since_epoch)
+  inline Datetime<_Period> fromtimestamp(duration<_Rep, __Period> time_since_epoch)
   {
     return Datetime<_Period>(time_since_epoch);
   }
 
   // 按精度来转换
   template <class _Period = ratio_one, typename Interger>
-  Datetime<_Period> fromtimestamp(Interger t)
+  inline Datetime<_Period> fromtimestamp(Interger t)
   {
     return Datetime<_Period>(typename Datetime<_Period>::precision(t));
   }
 }
 
 template <>
-constexpr Datetime<std::nano>::operator system_clock::time_point()
+inline constexpr Datetime<std::nano>::operator system_clock::time_point()
 {
-  return ::fromtimestamp(duration_cast<system_clock::duration>(to_duration()));
+  return ::fromtimestamp(duration_cast<system_clock::duration>(ts_));
 }

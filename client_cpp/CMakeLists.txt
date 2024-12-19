@@ -16,6 +16,7 @@ find_library(duckdb duckdb REQUIRED)
 
 add_library(qdduckdb SHARED
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.duckdb.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/datetime.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/duckdb/duckdb.hpp"
 )
 target_link_libraries(qdduckdb PUBLIC ${duckdb})
@@ -25,6 +26,7 @@ find_package(mongocxx REQUIRED)
 find_package(bsoncxx REQUIRED)
 add_library(qdmongodb SHARED
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.mongodb.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/datetime.cpp"
 )
 target_link_libraries(qdmongodb PUBLIC mongo::bsoncxx_shared PUBLIC mongo::mongocxx_shared)
 
@@ -33,6 +35,7 @@ add_library(quantdata SHARED
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.duckdb.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/duckdb/duckdb.hpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.mongodb.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/datetime.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.cpp"
 )
 target_link_libraries(quantdata PUBLIC ${duckdb} PUBLIC mongo::bsoncxx_shared PUBLIC mongo::mongocxx_shared)
@@ -54,6 +57,6 @@ add_test(NAME "test_mongodb" COMMAND "test_mongodb" WORKING_DIRECTORY "${CMAKE_C
 set_tests_properties("test_mongodb" PROPERTIES FAIL_REGULAR_EXPRESSION "error")
 
 # test datetime
-add_executable(test_datetime "${CMAKE_CURRENT_SOURCE_DIR}/test/test_datetime.cpp")
+add_executable(test_datetime "${CMAKE_CURRENT_SOURCE_DIR}/test/test_datetime.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/src/datetime.cpp")
 target_link_libraries(test_datetime)
 add_test(NAME "test_datetime" COMMAND "test_datetime" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
