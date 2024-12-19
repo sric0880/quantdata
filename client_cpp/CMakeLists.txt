@@ -79,3 +79,16 @@ target_link_libraries(test_quantdata quantdata)
 add_test(NAME "test_quantdata" COMMAND "test_quantdata" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # for Install
+include(GNUInstallDirs)
+
+install(
+  TARGETS qddatetime
+  DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+install(
+  TARGETS qdduckdb qdmongodb quantdata
+  DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+install(
+  DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/quantdata"
+  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
