@@ -116,4 +116,4 @@ install(
 )
 install(
   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/quantdata"
-  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+  DESTINATION include)
