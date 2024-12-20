@@ -1,4 +1,5 @@
-#pragma once
+﻿#pragma once
+#pragma warning(disable : 4996)
 #include <string>
 #include <ctime>
 #include <chrono>
@@ -8,7 +9,14 @@
 
 #include "time.h" // defined timezone
 
+#ifdef _WIN32
+#define __tzoffset _timezone
+#else
+#define __tzoffset timezone
+#endif
+
 using namespace std::chrono;
+using nanoseconds100 = duration<nanoseconds::rep, std::ratio<1, 10'000'000>>;
 
 class DatetimeInputError : public std::invalid_argument
 {
@@ -23,7 +31,7 @@ inline system_clock::time_point now()
 template <class _Rep, class _Period>
 constexpr system_clock::time_point fromtimestamp(duration<_Rep, _Period> time_since_epoch)
 {
-  return system_clock::time_point(time_since_epoch);
+  return system_clock::time_point(duration_cast<system_clock::duration>(time_since_epoch));
 }
 
 template <typename Interger>
@@ -45,16 +53,16 @@ constexpr system_clock::time_point fromtimestamp_micro(Interger micro)
 }
 
 /**
- * system_clock 精度为微妙，纳秒会有精度丢失
+ * system_clock 部分系统精度为微妙，纳秒会有精度丢失
  */
 template <typename Interger>
 constexpr system_clock::time_point fromtimestamp_nano(Interger nano)
 {
-  return fromtimestamp(duration_cast<microseconds>(nanoseconds(nano)));
+  return fromtimestamp(nanoseconds(nano));
 }
 
 /**
- * system_clock 精度为微妙，纳秒会有精度丢失
+ * system_clock 部分系统精度为微妙，纳秒会有精度丢失
  */
 system_clock::time_point fromisoformat(const char *time_string);
 
@@ -94,6 +102,15 @@ std::string isoformat_nanosec(Interger1 sec, Interger2 /*long*/ nano)
   return std::string(ss.str());
 }
 
+template <class Interger1, class Interger2>
+std::string isoformat_nano100sec(Interger1 sec, Interger2 /*long*/ nano)
+{
+  std::time_t t = (std::time_t)sec;
+  std::ostringstream ss;
+  ss << std::put_time(std::gmtime(&t), "%F %T") << "." << std::setw(7) << std::setfill('0') << nano;
+  return std::string(ss.str());
+}
+
 template <class Interger1>
 std::string isoformat_millisec(Interger1 /*long*/ millisec)
 {
@@ -103,13 +120,19 @@ std::string isoformat_millisec(Interger1 /*long*/ millisec)
 template <class Interger1>
 std::string isoformat_microsec(Interger1 /*long*/ microsec)
 {
-  return isoformat_microsec(microsec / 1000000, microsec % 1000000);
+  return isoformat_microsec(microsec / 1000'000, microsec % 1000'000);
 }
 
 template <class Interger1>
 std::string isoformat_nanosec(Interger1 /*long*/ nanosec)
 {
-  return isoformat_nanosec(nanosec / 1000000000, nanosec % 1000000000);
+  return isoformat_nanosec(nanosec / 1'000'000'000, nanosec % 1'000'000'000);
+}
+
+template <class Interger1>
+std::string isoformat_nano100sec(Interger1 /*long*/ nanosec)
+{
+  return isoformat_nano100sec(nanosec / 10'000'000, nanosec % 10'000'000);
 }
 
 template <class _Rep, class _Period>
@@ -125,6 +148,14 @@ inline std::string isoformat<nanoseconds::rep, nanoseconds::period>(nanoseconds 
   auto seconds_since_epoch = duration_cast<seconds>(time_since_epoch);
   auto subseconds = time_since_epoch - seconds_since_epoch;
   return isoformat_nanosec(seconds_since_epoch.count(), subseconds.count());
+}
+
+template <>
+inline std::string isoformat<nanoseconds100::rep, nanoseconds100::period>(nanoseconds100 time_since_epoch)
+{
+  auto seconds_since_epoch = duration_cast<seconds>(time_since_epoch);
+  auto subseconds = time_since_epoch - seconds_since_epoch;
+  return isoformat_nano100sec(seconds_since_epoch.count(), subseconds.count());
 }
 
 template <>
@@ -158,11 +189,32 @@ struct Date
 
 using ratio_one = std::ratio<1>;
 
+template <class _Period>
+struct Precision;
+template <>
+struct Precision<std::nano>
+{
+  typedef nanoseconds type;
+};
+template <>
+struct Precision<std::micro>
+{
+  typedef microseconds type;
+};
+template <>
+struct Precision<std::milli>
+{
+  typedef milliseconds type;
+};
+template <>
+struct Precision<ratio_one>
+{
+  typedef seconds type;
+};
 template <class _Period = ratio_one>
 struct Time
 {
-  static_assert((std::is_same_v<_Period, std::nano> || std::is_same_v<_Period, std::micro> || std::is_same_v<_Period, std::milli> || std::is_same_v<_Period, std::ratio<1>>), "");
-  typedef duration<long long, _Period> precision;
+  typedef typename Precision<_Period>::type precision;
   int hour;       /* hours since midnight [0-23] */
   int min;        /* minutes after the hour [0-59] */
   int sec;        /* seconds after the minute [0-60] */
@@ -186,6 +238,7 @@ struct Datetime
   Date date;
   Time<_Period> time;
 
+  // 一定要是UTC时间，不同时区，直接影响到底层的timestamp
   constexpr Datetime(Date d, Time<_Period> t) : date(d), time(t)
   {
     std::tm _tm{};
@@ -195,10 +248,12 @@ struct Datetime
     _tm.tm_hour = time.hour;
     _tm.tm_min = time.min;
     _tm.tm_sec = time.sec;
-    std::time_t sec = std::mktime(&_tm) - timezone;
+    std::time_t sec = std::mktime(&_tm) - __tzoffset;
     ts_ = precision(time.subseconds) + seconds(sec);
   }
+  // 一定要是UTC时间，不同时区，直接影响到底层的timestamp，默认本地时间
   constexpr Datetime(int year, int mon, int day, int hour = 0, int min = 0, int sec = 0) : Datetime({year, mon, day}, {hour, min, sec, 0}) {};
+  // 一定要是UTC时间，不同时区，直接影响到底层的timestamp，默认本地时间
   constexpr Datetime(int year, int mon, int day, int hour, int min, int sec, int subseconds) : Datetime({year, mon, day}, {hour, min, sec, subseconds})
   {
     static_assert(!std::is_same_v<_Period, ratio_one>);
@@ -217,7 +272,7 @@ struct Datetime
     time.hour = _tm->tm_hour;
     time.min = _tm->tm_min;
     time.sec = _tm->tm_sec;
-    time.subseconds = subseconds.count();
+    time.subseconds = (int)subseconds.count();
   }
 
   std::string isoformat()
@@ -226,23 +281,23 @@ struct Datetime
   }
 
   // return time since epoch
-  constexpr uint64_t timestamp()
+  constexpr uint64_t timestamp() const
   {
     return (uint64_t)ts_.count();
   }
 
-  constexpr const precision &to_duration()
+  constexpr const precision &to_duration() const
   {
     return ts_;
   }
 
-  constexpr operator precision()
+  constexpr operator precision() const
   {
     return ts_;
   }
 
-  /** 对于纳秒 会有精度丢失 所以这里不能做隐式转换 */
-  constexpr explicit operator system_clock::time_point()
+  /** 对于纳秒 部分系统会有精度丢失 所以这里不能做隐式转换 */
+  constexpr explicit operator system_clock::time_point() const
   {
     return ::fromtimestamp(ts_);
   }
@@ -274,7 +329,7 @@ namespace datetime
 }
 
 template <>
-inline constexpr Datetime<std::nano>::operator system_clock::time_point()
+inline constexpr Datetime<std::nano>::operator system_clock::time_point() const
 {
   return ::fromtimestamp(duration_cast<system_clock::duration>(ts_));
 }

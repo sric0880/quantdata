@@ -68,7 +68,7 @@ void _InitDB(const YAML::Node *config, std::string_view stype)
   else
   {
     YAML::Node new_config;
-    auto items = (*config)["services"][stype];
+    auto items = (*config)["services"][std::string(stype)];
     for (YAML::const_iterator it = items.begin(); it != items.end(); ++it)
     {
       auto db_name = it->first.as<std::string>();
@@ -81,7 +81,6 @@ void _InitDB(const YAML::Node *config, std::string_view stype)
 
 void InitDB(const YAML::Node *config, std::string_view stype)
 {
-
   if (!config)
   {
     YAML::Node config = YAML::LoadFile("quantdata_config.yml");

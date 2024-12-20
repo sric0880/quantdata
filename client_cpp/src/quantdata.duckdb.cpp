@@ -292,6 +292,7 @@ std::string ConvertToString(duckdb_result *result, const duckdb_type type, const
   case DUCKDB_TYPE_VARINT:
   // SQLNULL type
   case DUCKDB_TYPE_SQLNULL:
+  default:
     return "Undefined";
   }
 }

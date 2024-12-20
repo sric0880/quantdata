@@ -39,17 +39,39 @@ int main(int, char **)
   catch (std::exception &)
   {
   }
-  QD_ASSERT("2024-07-29 00:00:00.999666" == isoformat(fromisoformat("2024-07-29 00:00:00.999666777")), "");
-  QD_ASSERT("2024-07-29 00:00:00.000000" == isoformat(fromisoformat("2024-07-29 00:00:00")), "");
-  QD_ASSERT("2024-07-29 00:00:00.000000" == isoformat(fromisoformat("2024-07-29 00:00:00.000000")), "");
-  QD_ASSERT("2024-07-29 00:00:00.000001" == isoformat(fromisoformat("2024-07-29 00:00:00.000001")), "");
-  QD_ASSERT("2024-07-29 00:00:00.999999" == isoformat(fromisoformat("2024-07-29 00:00:00.999999")), "");
-  QD_ASSERT("2024-07-29 00:00:00.999000" == isoformat(fromisoformat("2024-07-29 00:00:00.999")), "");
+  // system_clock 啥精度都有哈，真是千奇百怪
+  if constexpr (std::is_same_v<system_clock::duration, nanoseconds>)
+  {
+    QD_ASSERT("2024-07-29 00:00:00.999666777" == isoformat(fromisoformat("2024-07-29 00:00:00.999666777")), "");
+    QD_ASSERT("2024-07-29 00:00:00.000000000" == isoformat(fromisoformat("2024-07-29 00:00:00")), "");
+    QD_ASSERT("2024-07-29 00:00:00.000000000" == isoformat(fromisoformat("2024-07-29 00:00:00.000000")), "");
+    QD_ASSERT("2024-07-29 00:00:00.000001000" == isoformat(fromisoformat("2024-07-29 00:00:00.000001")), "");
+    QD_ASSERT("2024-07-29 00:00:00.999999000" == isoformat(fromisoformat("2024-07-29 00:00:00.999999")), "");
+    QD_ASSERT("2024-07-29 00:00:00.999000000" == isoformat(fromisoformat("2024-07-29 00:00:00.999")), "");
+  }
+  else if constexpr (std::is_same_v<system_clock::duration::period, std::ratio<1, 10'000'000>>)
+  {
+    QD_ASSERT("2024-07-29 00:00:00.9996667" == isoformat(fromisoformat("2024-07-29 00:00:00.999666777")), "");
+    QD_ASSERT("2024-07-29 00:00:00.0000000" == isoformat(fromisoformat("2024-07-29 00:00:00")), "");
+    QD_ASSERT("2024-07-29 00:00:00.0000000" == isoformat(fromisoformat("2024-07-29 00:00:00.000000")), "");
+    QD_ASSERT("2024-07-29 00:00:00.0000010" == isoformat(fromisoformat("2024-07-29 00:00:00.000001")), "");
+    QD_ASSERT("2024-07-29 00:00:00.9999990" == isoformat(fromisoformat("2024-07-29 00:00:00.999999")), "");
+    QD_ASSERT("2024-07-29 00:00:00.9990000" == isoformat(fromisoformat("2024-07-29 00:00:00.999")), "");
+  }
+  else
+  {
+    QD_ASSERT("2024-07-29 00:00:00.999666" == isoformat(fromisoformat("2024-07-29 00:00:00.999666777")), "");
+    QD_ASSERT("2024-07-29 00:00:00.000000" == isoformat(fromisoformat("2024-07-29 00:00:00")), "");
+    QD_ASSERT("2024-07-29 00:00:00.000000" == isoformat(fromisoformat("2024-07-29 00:00:00.000000")), "");
+    QD_ASSERT("2024-07-29 00:00:00.000001" == isoformat(fromisoformat("2024-07-29 00:00:00.000001")), "");
+    QD_ASSERT("2024-07-29 00:00:00.999999" == isoformat(fromisoformat("2024-07-29 00:00:00.999999")), "");
+    QD_ASSERT("2024-07-29 00:00:00.999000" == isoformat(fromisoformat("2024-07-29 00:00:00.999")), "");
+  }
 
   QD_ASSERT(fromtimestamp(sec.count()) == time_point<system_clock>(sec), "");
   QD_ASSERT(fromtimestamp_milli(milli.count()) == time_point<system_clock>(milli), "");
   QD_ASSERT(fromtimestamp_micro(micro.count()) == time_point<system_clock>(micro), "");
-  QD_ASSERT(fromtimestamp_nano(nano.count()) == time_point<system_clock>(duration_cast<microseconds>(nano)), "");
+  QD_ASSERT(fromtimestamp_nano(nano.count()) == system_clock::time_point(duration_cast<system_clock::duration>(nano)), "");
 
   QD_ASSERT(datetime::fromtimestamp<std::micro>(micro.count()).isoformat() == "2024-12-17 05:18:21.444555", "");
   QD_ASSERT(datetime::fromtimestamp<std::milli>(micro).isoformat() == "2024-12-17 05:18:21.444", "");
