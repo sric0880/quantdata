@@ -281,9 +281,9 @@ struct Datetime
   }
 
   // return time since epoch
-  constexpr uint64_t timestamp() const
+  constexpr typename precision::rep to_timestamp() const
   {
-    return (uint64_t)ts_.count();
+    return ts_.count();
   }
 
   constexpr const precision &to_duration() const
