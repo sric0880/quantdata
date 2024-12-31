@@ -1,7 +1,7 @@
 duckdb:
   uri:
-    - "/Users/qiong/Desktop/quantdata/datas/duckdb/finance.db"
-    - "/Users/qiong/Desktop/quantdata/datas/duckdb/finance_ticks_ctpfuture.db"
+    - "/Users/qiong/WorkingDoc/quantdata/datas/duckdb/finance.db"
+    - "/Users/qiong/WorkingDoc/quantdata/datas/duckdb/finance_ticks_ctpfuture.db"
 mongodb:
   host: "127.0.0.1"
   port: 27017
@@ -10,11 +10,11 @@ mongodb:
 
 duckdb-astock:
   uri:
-    - "/Users/qiong/Desktop/quantdata/datas/duckdb/finance.db"
+    - "/Users/qiong/WorkingDoc/quantdata/datas/duckdb/finance.db"
 
 duckdb-ctp:
   uri:
-    - "/Users/qiong/Desktop/quantdata/datas/duckdb/finance_ticks_ctpfuture.db"
+    - "/Users/qiong/WorkingDoc/quantdata/datas/duckdb/finance_ticks_ctpfuture.db"
 
 services:
   bt:

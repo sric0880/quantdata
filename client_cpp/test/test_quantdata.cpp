@@ -19,7 +19,7 @@ int main(int, char **)
   YAML::Node mongodb;
   YAML::Node duckdb;
   mongodb["host"] = "127.0.0.1";
-  duckdb["uri"].push_back("/Users/qiong/Desktop/quantdata/datas/duckdb/finance_ticks_ctpfuture.db");
+  duckdb["uri"].push_back("/Users/qiong/WorkingDoc/quantdata/datas/duckdb/finance_ticks_ctpfuture.db");
   config["mongodb"] = mongodb;
   config["duckdb"] = duckdb;
   std::cout << "custom " << std::endl;

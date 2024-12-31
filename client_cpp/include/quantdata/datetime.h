@@ -179,12 +179,29 @@ inline std::string isoformat<system_clock::time_point>(system_clock::time_point 
 {
   return isoformat(tp.time_since_epoch());
 }
-
+struct IsoCalendarDate
+{
+  int year;
+  int week;    /* [1, 52/53] */
+  int weekday; /* from monday to sunday [1, 7] */
+};
 struct Date
 {
   int year;
   int mon; /* months since January [1-12] */
   int day; /* day of the month [1-31] */
+  /*
+  Return a named tuple containing ISO year, week number, and weekday.
+
+  The first ISO week of the year is the (Mon-Sun) week
+  containing the year's first Thursday; everything else derives
+  from that.
+
+  The first week is 1; Monday is 1 ... Sunday is 7.
+
+  ISO calendar algorithm taken from python::datetime
+  */
+  IsoCalendarDate isocalendar();
 };
 
 using ratio_one = std::ratio<1>;

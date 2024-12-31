@@ -39,7 +39,7 @@ int main(int, char **)
   catch (std::exception &)
   {
   }
-  // system_clock É¶¾«¶È¶¼ÓÐ¹þ£¬ÕæÊÇÇ§Ææ°Ù¹Ö
+  // system_clock É¶ï¿½ï¿½ï¿½È¶ï¿½ï¿½Ð¹ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç§ï¿½ï¿½Ù¹ï¿½
   if constexpr (std::is_same_v<system_clock::duration, nanoseconds>)
   {
     QD_ASSERT("2024-07-29 00:00:00.999666777" == isoformat(fromisoformat("2024-07-29 00:00:00.999666777")), "");
@@ -81,4 +81,46 @@ int main(int, char **)
   QD_ASSERT(Datetime<std::milli>(2024, 12, 17, 5, 18, 21, 444).isoformat() == "2024-12-17 05:18:21.444", "");
   QD_ASSERT(Datetime(2024, 12, 17, 5, 18, 21).isoformat() == "2024-12-17 05:18:21", "");
   // QD_ASSERT(Datetime<std::milli>({2024, 12, 17}, {5, 18, 21, 444}).isoformat() == "2024-12-17 05:18:21.444", "");
+
+  // test isocalendar
+  auto d0 = Date({2024, 12, 31}).isocalendar();
+  QD_ASSERT((d0.year == 2025 && d0.week == 1 && d0.weekday == 2), "");
+  auto d1 = Date({2025, 1, 1}).isocalendar();
+  QD_ASSERT((d1.year == 2025 && d1.week == 1 && d1.weekday == 3), "");
+  auto d2 = Date({2025, 1, 3}).isocalendar();
+  QD_ASSERT((d2.year == 2025 && d2.week == 1 && d2.weekday == 5), "");
+  auto d3 = Date({2025, 1, 6}).isocalendar();
+  QD_ASSERT((d3.year == 2025 && d3.week == 2 && d3.weekday == 1), "");
+  auto d4 = Date({2025, 1, 10}).isocalendar();
+  QD_ASSERT((d4.year == 2025 && d4.week == 2 && d4.weekday == 5), "");
+  auto d5 = Date({2025, 1, 15}).isocalendar();
+  QD_ASSERT((d5.year == 2025 && d5.week == 3 && d5.weekday == 3), "");
+  auto d6 = Date({2025, 1, 21}).isocalendar();
+  QD_ASSERT((d6.year == 2025 && d6.week == 4 && d6.weekday == 2), "");
+  auto d7 = Date({2025, 1, 28}).isocalendar();
+  QD_ASSERT((d7.year == 2025 && d7.week == 5 && d7.weekday == 2), "");
+  auto d8 = Date({2025, 2, 5}).isocalendar();
+  QD_ASSERT((d8.year == 2025 && d8.week == 6 && d8.weekday == 3), "");
+  auto d9 = Date({2025, 2, 14}).isocalendar();
+  QD_ASSERT((d9.year == 2025 && d9.week == 7 && d9.weekday == 5), "");
+  auto d10 = Date({2025, 2, 24}).isocalendar();
+  QD_ASSERT((d10.year == 2025 && d10.week == 9 && d10.weekday == 1), "");
+  auto d11 = Date({2025, 3, 7}).isocalendar();
+  QD_ASSERT((d11.year == 2025 && d11.week == 10 && d11.weekday == 5), "");
+  auto d12 = Date({2025, 3, 19}).isocalendar();
+  QD_ASSERT((d12.year == 2025 && d12.week == 12 && d12.weekday == 3), "");
+  auto d13 = Date({2025, 4, 1}).isocalendar();
+  QD_ASSERT((d13.year == 2025 && d13.week == 14 && d13.weekday == 2), "");
+  auto d14 = Date({2025, 4, 15}).isocalendar();
+  QD_ASSERT((d14.year == 2025 && d14.week == 16 && d14.weekday == 2), "");
+  auto d15 = Date({2025, 4, 30}).isocalendar();
+  QD_ASSERT((d15.year == 2025 && d15.week == 18 && d15.weekday == 3), "");
+  auto d16 = Date({2025, 5, 16}).isocalendar();
+  QD_ASSERT((d16.year == 2025 && d16.week == 20 && d16.weekday == 5), "");
+  auto d17 = Date({2025, 6, 2}).isocalendar();
+  QD_ASSERT((d17.year == 2025 && d17.week == 23 && d17.weekday == 1), "");
+  auto d18 = Date({2025, 6, 20}).isocalendar();
+  QD_ASSERT((d18.year == 2025 && d18.week == 25 && d18.weekday == 5), "");
+  auto d19 = Date({2025, 7, 9}).isocalendar();
+  QD_ASSERT((d19.year == 2025 && d19.week == 28 && d19.weekday == 3), "");
 }
