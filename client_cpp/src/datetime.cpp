@@ -111,7 +111,7 @@ int _isoweek1monday(int year)
   return week1monday;
 }
 
-IsoCalendarDate Date::isocalendar()
+IsoCalendarDate Date::isocalendar() const
 {
   int _year = year;
   int week1monday = _isoweek1monday(_year);

@@ -201,7 +201,7 @@ struct Date
 
   ISO calendar algorithm taken from python::datetime
   */
-  IsoCalendarDate isocalendar();
+  IsoCalendarDate isocalendar() const;
 };
 
 using ratio_one = std::ratio<1>;
