@@ -292,7 +292,7 @@ struct Datetime
     time.subseconds = (int)subseconds.count();
   }
 
-  std::string isoformat()
+  std::string isoformat() const
   {
     return ::isoformat(ts_);
   }
