@@ -326,7 +326,7 @@ private:
 template <class _Period>
 bool operator==(const Datetime<_Period> &x, const Datetime<_Period> &y)
 {
-  return x.timestamp() == y.timestamp();
+  return x.to_timestamp() == y.to_timestamp();
 }
 
 namespace datetime
