@@ -150,7 +150,7 @@ std::optional<milliseconds> MongoGetNextTradeDt(std::string_view db_name, std::s
   return doc_value.has_value() ? std::optional<milliseconds>(doc_value.value()["_id"].get_date().value) : std::nullopt;
 }
 
-std::unordered_map<std::string, std::vector<types::bson_value::value>> MongoFetchDict(cursor &cr)
+std::unordered_map<std::string, std::vector<types::bson_value::value>> MongoFetchDict(cursor &&cr)
 {
   std::unordered_map<std::string, std::vector<types::bson_value::value>> ret;
   for (auto &doc : cr)

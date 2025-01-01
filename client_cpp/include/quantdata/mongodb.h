@@ -2,6 +2,8 @@
 #include <string>
 #include <optional>
 #include <unordered_map>
+#include <tuple>
+#include <functional>
 #include <mongocxx/cursor.hpp>
 #include <mongocxx/options/find.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
@@ -48,27 +50,29 @@ void MongoConnect(std::string_view host,
 void MongoClose();
 
 // cursor 只能遍历一遍
-template <class T = document::view>
-std::vector<T> MongoFetchArrays(cursor &cr)
+template <
+    typename... Args,
+    typename TupleType = std::tuple<Args...>,
+    typename Convertor = std::function<TupleType(const document::view &)>>
+std::vector<TupleType> MongoFetchArrays(cursor &&cr, Convertor &&convert)
 {
     if (cr.begin() == cr.end())
     {
-        return std::vector<T>();
+        return std::vector<TupleType>();
     }
     else
     {
-        std::vector<T> ret;
-        for (auto &doc : cr)
+        std::vector<TupleType> ret;
+        for (auto &&doc : cr)
         {
-            ret.emplace_back(doc);
+            ret.emplace_back(convert(doc));
         }
         return ret;
     }
 }
 
 // cursor 只能遍历一遍
-// 该函数会复制一遍底层数据，使用 MongoFetchArrays 效率更高
-std::unordered_map<std::string, std::vector<types::bson_value::value>> MongoFetchDict(cursor &cr);
+std::unordered_map<std::string, std::vector<types::bson_value::value>> MongoFetchDict(cursor &&cr);
 
 cursor MongoGetData(
     std::string_view db_name,
