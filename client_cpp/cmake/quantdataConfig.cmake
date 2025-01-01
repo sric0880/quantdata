@@ -1,1 +1,6 @@
+include(CMakeFindDependencyMacro)
+find_dependency(fmt REQUIRED)
+find_dependency(mongocxx REQUIRED)
+find_dependency(bsoncxx REQUIRED)
+find_dependency(yaml-cpp REQUIRED)
 include("${CMAKE_CURRENT_LIST_DIR}/quantdata_Targets.cmake")
