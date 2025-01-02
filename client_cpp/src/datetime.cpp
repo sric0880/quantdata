@@ -63,7 +63,7 @@ constexpr const int _DAYS_BEFORE_MONTH[13] = {-1, 0, 31, 59, 90, 120, 151, 181, 
 // year -> 1 if leap year, else 0.
 bool _is_leap(int year)
 {
-  return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0);
+  return (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0);
 }
 
 // year -> number of days before January 1st of year.
@@ -77,7 +77,7 @@ int _days_before_year(int year)
 int _days_in_month(int year, int month)
 {
   assert((1 <= month) && (month <= 12));
-  if (month == 2 and _is_leap(year))
+  if (month == 2 && _is_leap(year))
     return 29;
   return _DAYS_IN_MONTH[month];
 }
@@ -86,7 +86,7 @@ int _days_in_month(int year, int month)
 int _days_before_month(int year, int month)
 {
   assert((1 <= month) && (month <= 12));
-  return _DAYS_BEFORE_MONTH[month] + (month > 2 and _is_leap(year));
+  return _DAYS_BEFORE_MONTH[month] + (month > 2 && _is_leap(year));
 }
 
 // year, month, day -> ordinal, considering 01-Jan-0001 as day 1.
@@ -94,7 +94,7 @@ int _ymd2ord(int year, int month, int day)
 {
   assert((1 <= month) && (month <= 12));
   int dim = _days_in_month(year, month);
-  assert(1 <= day <= dim); // day must be in 1..dim
+  assert((1 <= day) && (day <= dim)); // day must be in 1..dim
   return (_days_before_year(year) + _days_before_month(year, month) + day);
 }
 
