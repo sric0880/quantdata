@@ -258,15 +258,7 @@ struct Datetime
   // 一定要是UTC时间，不同时区，直接影响到底层的timestamp
   constexpr Datetime(Date d, Time<_Period> t) : date(d), time(t)
   {
-    std::tm _tm{};
-    _tm.tm_year = date.year - 1900;
-    _tm.tm_mon = date.mon - 1;
-    _tm.tm_mday = date.day;
-    _tm.tm_hour = time.hour;
-    _tm.tm_min = time.min;
-    _tm.tm_sec = time.sec;
-    std::time_t sec = std::mktime(&_tm) - __tzoffset;
-    ts_ = precision(time.subseconds) + seconds(sec);
+    calc_timestamp();
   }
   // 一定要是UTC时间，不同时区，直接影响到底层的timestamp，默认本地时间
   constexpr Datetime(int year, int mon, int day, int hour = 0, int min = 0, int sec = 0) : Datetime({year, mon, day}, {hour, min, sec, 0}) {};
@@ -295,6 +287,19 @@ struct Datetime
   std::string isoformat() const
   {
     return ::isoformat(ts_);
+  }
+
+  void calc_timestamp()
+  {
+    std::tm _tm{};
+    _tm.tm_year = date.year - 1900;
+    _tm.tm_mon = date.mon - 1;
+    _tm.tm_mday = date.day;
+    _tm.tm_hour = time.hour;
+    _tm.tm_min = time.min;
+    _tm.tm_sec = time.sec;
+    std::time_t sec = std::mktime(&_tm) - __tzoffset;
+    ts_ = precision(time.subseconds) + seconds(sec);
   }
 
   // return time since epoch
