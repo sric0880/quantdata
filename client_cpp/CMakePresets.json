@@ -60,8 +60,8 @@
             }
         },
         {
-            "name": "linux-debug",
-            "displayName": "Linux/MacOS Debug",
+            "name": "macos-debug",
+            "displayName": "MacOS Debug",
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/out/build/${presetName}",
             "installDir": "${sourceDir}/out/install/${presetName}",
@@ -70,9 +70,9 @@
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
             },
             "condition": {
-                "type": "notEquals",
+                "type": "equals",
                 "lhs": "${hostSystemName}",
-                "rhs": "Windows"
+                "rhs": "Darwin"
             },
             "vendor": {
                 "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
@@ -81,8 +81,29 @@
             }
         },
         {
+            "name": "macos-release",
+            "displayName": "MacOS Release",
+            "inherits": "macos-debug",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "linux-debug",
+            "displayName": "Linux Debug",
+            "inherits": "macos-debug",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            },
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+            }
+        },
+        {
             "name": "linux-release",
-            "displayName": "Linux/MacOS Release",
+            "displayName": "Linux Release",
             "inherits": "linux-debug",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Release"
