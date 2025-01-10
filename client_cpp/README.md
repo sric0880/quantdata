@@ -65,16 +65,35 @@ Windows下载的文件中有个duckdb.dll和duckdb.lib，将它们拷贝到`C:\W
 
     如果要安装DEBUG版本，将`RelWithDebInfo`改为`DEBUG`。如果在调试Debug模式下开发，必须安装Debug版本，否则会发生意想不到的Bug。
 
-## Install
+### 其他库
 
-安装依赖vcpkg，要提前线先安装。
+都以静态库的形式安装
+
+- [fmt](https://fmt.dev/11.1/get-started/#building-from-source)
+    
+    ```sh 
+    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE 
+    cmake --build ./build
+    sudo cmake --build ./build --target install
+
+    # or windows
+    cmake -S . -B build -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE
+    cmake --build ./build --config RelWithDebInfo --parallel
+    cmake --build ./build --target install --config RelWithDebInfo
+    ```
+
+- [yaml-cpp](https://github.com/jbeder/yaml-cpp/tree/master)
+
+    基本同上
+
+    在Windows下find_packages报错：找不到yaml-cpp-config.cmake。需要将`C:\Program Files (x86)\YAML_CPP`路径改成`C:\Program Files (x86)\YAML-CPP`。
+
+## Install
 
 ### MacOS/Linux
 
-命令行安装：DCMAKE_TOOLCHAIN_FILE 改成自己的目录。
-
 ```sh
-cmake -S . -B ./build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=~/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake -S . -B ./build -DCMAKE_BUILD_TYPE=Release
 cmake --build ./build
 sudo cmake --build ./build --target install
 ```
@@ -83,10 +102,10 @@ sudo cmake --build ./build --target install
 
 在Visual Studio中调试：修改`CMakePresets.json`中的configurePresets > windows-base > CMAKE_PREFIX_PATH。这个是前面安装mongo cxx driver的`CMAKE_INSTALL_PREFIX`，告诉CMake去哪个目录查找MongoDB的库文件。
 
-命令行安装：DCMAKE_PREFIX_PATH 和 DCMAKE_TOOLCHAIN_FILE 都改成自己的目录。
+命令行安装：DCMAKE_PREFIX_PATH 改成自己的目录。
 
 ```powershell
-cmake -S . -B ./build -G "Visual Studio 17 2022" -DCMAKE_PREFIX_PATH=C:\"Program Files (x86)"\mongo-c-driver -DCMAKE_TOOLCHAIN_FILE="D:/open_source/vcpkg/scripts/buildsystems/vcpkg.cmake"
+cmake -S . -B ./build -G "Visual Studio 17 2022" -DCMAKE_PREFIX_PATH=C:\"Program Files (x86)"\mongo-c-driver
 cmake --build ./build --config RelWithDebInfo --parallel
 cmake --build ./build --target install --config RelWithDebInfo
 ```

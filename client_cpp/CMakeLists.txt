@@ -10,10 +10,14 @@ if(MSVC)
 endif()
 
 find_package(fmt CONFIG REQUIRED)
+find_package(yaml-cpp CONFIG REQUIRED)
+find_library(duckdb duckdb REQUIRED)
+find_package(mongocxx REQUIRED)
+find_package(bsoncxx REQUIRED)
+
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 
-find_library(duckdb duckdb REQUIRED)
 
 add_library(qddatetime STATIC
   "${CMAKE_CURRENT_SOURCE_DIR}/src/datetime.cpp")
@@ -24,9 +28,6 @@ add_library(qdduckdb SHARED
 )
 target_link_libraries(qdduckdb PUBLIC ${duckdb} PUBLIC fmt::fmt PRIVATE qddatetime)
 
-
-find_package(mongocxx REQUIRED)
-find_package(bsoncxx REQUIRED)
 add_library(qdmongodb SHARED
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.mongodb.cpp"
 )
@@ -37,7 +38,6 @@ target_link_libraries(qdmongodb
   PRIVATE qddatetime)
 
 
-find_package(yaml-cpp CONFIG REQUIRED)
 add_library(quantdata SHARED
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.duckdb.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/duckdb/duckdb.hpp"
