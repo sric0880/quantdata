@@ -121,3 +121,9 @@ find_package(quantdata REQUIRED)
 target_link_libraries(YOUR_LIB quantdata::xxxx)
 ```
 
+## Test
+
+```sh
+# 添加 -V 打印所有输出
+ctest -T test --test-dir out/build/linux-debug --output-on-failure
+```
