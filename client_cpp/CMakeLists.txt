@@ -21,6 +21,9 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/third_party")
 
 add_library(qddatetime STATIC
   "${CMAKE_CURRENT_SOURCE_DIR}/src/datetime.cpp")
+# To build a static library with position-independent code
+# (e.g. for linking it into another shared library such as a Python extension)
+set_property(TARGET qddatetime PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 add_library(qdduckdb SHARED
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.duckdb.cpp"
