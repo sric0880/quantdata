@@ -76,7 +76,7 @@ int _days_before_year(int year)
 // year, month -> number of days in that month in that year.
 int _days_in_month(int year, int month)
 {
-  assert((1 <= month) && (month <= 12));
+  // assert((1 <= month) && (month <= 12));
   if (month == 2 && _is_leap(year))
     return 29;
   return _DAYS_IN_MONTH[month];
@@ -85,16 +85,16 @@ int _days_in_month(int year, int month)
 // year, month -> number of days in year preceding first day of month.
 int _days_before_month(int year, int month)
 {
-  assert((1 <= month) && (month <= 12));
+  // assert((1 <= month) && (month <= 12));
   return _DAYS_BEFORE_MONTH[month] + (month > 2 && _is_leap(year));
 }
 
 // year, month, day -> ordinal, considering 01-Jan-0001 as day 1.
 int _ymd2ord(int year, int month, int day)
 {
-  assert((1 <= month) && (month <= 12));
+  // assert((1 <= month) && (month <= 12));
   int dim = _days_in_month(year, month);
-  assert((1 <= day) && (day <= dim)); // day must be in 1..dim
+  // assert((1 <= day) && (day <= dim)); // day must be in 1..dim
   return (_days_before_year(year) + _days_before_month(year, month) + day);
 }
 
@@ -111,30 +111,42 @@ int _isoweek1monday(int year)
   return week1monday;
 }
 
+div_t py_divmod(int x, int y)
+{
+  div_t r = div(x, y);
+  if (r.rem && (x < 0) != (y < 0))
+  {
+    r.quot -= 1;
+    r.rem += y;
+  }
+  return r;
+}
+
 IsoCalendarDate Date::isocalendar() const
 {
   int _year = year;
   int week1monday = _isoweek1monday(_year);
   int today = _ymd2ord(year, mon, day);
   // Internally, week and day have origin 0
-  int a = (today - week1monday);
-  int week = a / 7;
-  int day = a % 7;
+  div_t dvm = py_divmod(today - week1monday, 7);
+  int week, weekday;
+  week = dvm.quot;
+  weekday = dvm.rem;
   if (week < 0)
   {
-    _year -= 1;
+    --_year;
     week1monday = _isoweek1monday(_year);
-    int a = (today - week1monday);
-    int week = a / 7;
-    int day = a % 7;
+    dvm = py_divmod(today - week1monday, 7);
+    week = dvm.quot;
+    weekday = dvm.rem;
   }
   else if (week >= 52)
   {
     if (today >= _isoweek1monday(_year + 1))
     {
-      _year += 1;
+      ++_year;
       week = 0;
     }
   }
-  return {_year, week + 1, day + 1};
+  return {_year, week + 1, weekday + 1};
 }

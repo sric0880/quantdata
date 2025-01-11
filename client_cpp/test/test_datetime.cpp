@@ -124,4 +124,6 @@ int main(int, char **)
   QD_ASSERT((d18.year == 2025 && d18.week == 25 && d18.weekday == 5), "");
   auto d19 = Date({2025, 7, 9}).isocalendar();
   QD_ASSERT((d19.year == 2025 && d19.week == 28 && d19.weekday == 3), "");
+  auto d20 = Date({2022, 1, 1}).isocalendar();
+  QD_ASSERT((d20.year == 2021 && d20.week == 52 && d20.weekday == 6), "");
 }
