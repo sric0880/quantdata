@@ -17,7 +17,7 @@ tiledb = [ "tiledb" ]
 duckdb = [ "duckdb" ]
 
 [tool.setuptools]
-packages = ["quantdata", "quantdata.analysis"]
+packages = ["quantdata", "quantdata.analysis", "quantdata.databases"]
 
 [tool.pytest.ini_options]
 log_cli = false

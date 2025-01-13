@@ -4,7 +4,7 @@ import pathlib
 import duckdb
 import numpy as np
 
-conn_duckdb = None
+conn_duckdb: duckdb.DuckDBPyConnection = None
 
 
 def duckdb_connect_attach(
@@ -73,11 +73,11 @@ def duckdb_close():
 
 
 def duckdb_get_array(
-    conn, db_name: str, tablename: str, attrs: list = None, filter: str = None
+    db_name: str, tablename: str, attrs: list = None, filter: str = None
 ):
     names = ",".join(attrs) if attrs else "*"
     filter = f"where {filter}" if filter else ""
-    q = conn.sql(f"select {names} from {db_name}.{tablename} {filter}")
+    q = conn_duckdb.sql(f"select {names} from {db_name}.{tablename} {filter}")
     # 经测试，下面这种方式效率低
     # if filter:
     #     q = q.filter(filter)
@@ -85,7 +85,6 @@ def duckdb_get_array(
 
 
 def duckdb_get_array_last_rows(
-    conn,
     db_name: str,
     tablename: str,
     attrs: list = None,
@@ -94,7 +93,7 @@ def duckdb_get_array_last_rows(
 ):
     names = ",".join(attrs) if attrs else "*"
     filter = f"where {filter}" if filter else ""
-    return conn.sql(
+    return conn_duckdb.sql(
         f"SELECT * FROM (select {names} FROM {db_name}.{tablename} {filter} ORDER BY dt DESC LIMIT {N}) ORDER BY dt ASC;"
     )
 

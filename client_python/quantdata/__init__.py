@@ -1,3 +1,4 @@
+import contextlib
 from datetime import datetime
 
 import yaml
@@ -19,9 +20,33 @@ def init_db(config: dict = None, stype: str = None):
         return
     # 初始化数据库连接，全局共享
     if "duckdb" in config:
-        duckdb_connect_attach(config["duckdb"])
+        duckdb_connect_attach(**config["duckdb"])
     if "mongodb" in config:
         mongo_connect(**config["mongodb"])
+
+
+@contextlib.contextmanager
+def open_duckdb(**config):
+    if conn_duckdb is None:
+        duckdb_connect_attach(**config)
+        try:
+            yield conn_duckdb
+        finally:
+            duckdb_close()
+    else:
+        yield conn_duckdb
+
+
+@contextlib.contextmanager
+def open_mongodb(**config):
+    if conn_mongodb is None:
+        mongo_connect(**config)
+        try:
+            yield conn_mongodb
+        finally:
+            mongo_close()
+    else:
+        yield conn_mongodb
 
 
 def _get_data(
