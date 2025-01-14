@@ -142,3 +142,57 @@ def duckdb_fetchnumpy_to_recarray(q):
 def duckdb_fetchdf_to_recarray(q):
     """大量数据效率高"""
     return q.fetchdf().to_records(index=False)
+
+
+def duckdb_get_timeseries(
+    db_name: str,
+    tablename: str,
+    fields: list[str],
+    start_microsec: int,
+    till_microsec: int,
+    side: str,
+):
+    if start_microsec or till_microsec:
+        if side is None:
+            gt = ">"
+            lt = "<"
+        elif side == "both":
+            gt = ">="
+            lt = "<="
+        elif side == "right":
+            gt = ">"
+            lt = "<="
+        elif side == "left":
+            gt = ">="
+            lt = "<"
+        else:
+            raise ValueError("side has only 'both'/'right'/'left'/None options")
+
+        if start_microsec and till_microsec:
+            filter = f"dt{gt}make_timestamp({start_microsec}) and dt{lt}make_timestamp({till_microsec})"
+        elif start_microsec:
+            filter = f"dt{gt}make_timestamp({start_microsec})"
+        else:
+            filter = f"dt{lt}make_timestamp({till_microsec})"
+    else:
+        filter = None
+
+    return duckdb_get_array(db_name, tablename, attrs=fields, filter=filter)
+
+
+def duckdb_get_timeseries_datetime64(
+    db_name: str,
+    tablename: str,
+    fields: list[str],
+    start_dt: np.datetime64,
+    till_dt: np.datetime64,
+    side: str,
+):
+    return duckdb_get_timeseries(
+        db_name,
+        tablename,
+        fields,
+        start_dt.astype(np.int64) if start_dt is not None else 0,
+        till_dt.astype(np.int64) if till_dt is not None else 0,
+        side,
+    )
