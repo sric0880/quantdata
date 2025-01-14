@@ -8,7 +8,7 @@ from pymongo import MongoClient
 conn_mongodb: MongoClient = None
 
 
-def mongo_connect(host, port=27017, user="root", password="admin", **kwargs):
+def mongo_connect(host: str, port=27017, user="root", password="admin", **kwargs):
     global conn_mongodb
     if conn_mongodb is not None:
         return

@@ -49,13 +49,7 @@ def duckdb_connect_attach(
     for uri in uris:
         print(f"duckdb attach {uri}...")
         db_name = pathlib.Path(uri).name.replace(".db", "")
-        try:
-            conn_duckdb.execute(
-                f"ATTACH IF NOT EXISTS '{uri}' as {db_name} (READ_ONLY);"
-            )
-        except:
-            conn_duckdb.close()
-            raise
+        conn_duckdb.execute(f"ATTACH IF NOT EXISTS '{uri}' as {db_name} (READ_ONLY);")
 
 
 @atexit.register
