@@ -64,11 +64,3 @@ def open_mongodb(**config):
             mongo_close()
     else:
         yield conn_mongodb
-
-
-def get_trade_cal(db_name: str, **kwargs):
-    return mongo_get_trade_cal(db_name, **kwargs)
-
-
-def get_last_trade_dt(db_name: str, current_dt):
-    return mongo_get_last_trade_dt(db_name, current_dt)
