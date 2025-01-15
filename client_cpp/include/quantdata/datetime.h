@@ -40,6 +40,12 @@ constexpr system_clock::time_point fromtimestamp(Interger sec)
   return fromtimestamp(seconds(sec));
 }
 
+template <>
+constexpr system_clock::time_point fromtimestamp<double>(double ts)
+{
+  return system_clock::time_point(system_clock::time_point::duration(static_cast<typename system_clock::time_point::rep>(ts * system_clock::time_point::period::den)));
+}
+
 template <typename Interger>
 constexpr system_clock::time_point fromtimestamp_milli(Interger milli)
 {
