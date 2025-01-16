@@ -4,7 +4,6 @@ import yaml
 
 from .databases._duckdb import *
 from .databases._duckdb_api import *
-from .databases._duckdb_api2 import *
 from .databases._mongodb import *
 
 

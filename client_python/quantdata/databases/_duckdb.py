@@ -178,21 +178,3 @@ def duckdb_get_timeseries(
         filter = None
 
     return duckdb_get_array(db_name, tablename, attrs=fields, filter=filter)
-
-
-def duckdb_get_timeseries_datetime64(
-    db_name: str,
-    tablename: str,
-    fields: list[str],
-    start_dt: np.datetime64,
-    till_dt: np.datetime64,
-    side: str,
-):
-    return duckdb_get_timeseries(
-        db_name,
-        tablename,
-        fields,
-        start_dt.astype(np.int64) if start_dt is not None else 0,
-        till_dt.astype(np.int64) if till_dt is not None else 0,
-        side,
-    )
