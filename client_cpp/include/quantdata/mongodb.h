@@ -3,6 +3,7 @@
 #include <optional>
 #include <unordered_map>
 #include <tuple>
+#include <chrono>
 #include <functional>
 #include <mongocxx/cursor.hpp>
 #include <mongocxx/options/find.hpp>
@@ -17,8 +18,7 @@
 #include <bsoncxx/types.hpp>
 #include <bsoncxx/json.hpp>
 
-#include "quantdata/datetime.h"
-
+using namespace std::chrono;
 using namespace bsoncxx::v_noabi;
 using namespace mongocxx::v_noabi;
 

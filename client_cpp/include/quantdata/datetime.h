@@ -7,14 +7,6 @@
 #include <iomanip>
 #include <stdexcept>
 
-#include "time.h" // defined timezone
-
-#ifdef _WIN32
-#define __tzoffset _timezone
-#else
-#define __tzoffset timezone
-#endif
-
 using namespace std::chrono;
 using nanoseconds100 = duration<nanoseconds::rep, std::ratio<1, 10'000'000>>;
 
@@ -64,6 +56,7 @@ constexpr system_clock::time_point fromtimestamp_micro(Interger micro)
 template <typename Interger>
 constexpr system_clock::time_point fromtimestamp_nano(Interger nano)
 {
+  printf("Integer nanoseconds to system_clock::time_point may lose precision\n");
   return fromtimestamp(nanoseconds(nano));
 }
 
@@ -185,6 +178,48 @@ inline std::string isoformat<system_clock::time_point>(system_clock::time_point 
 {
   return isoformat(tp.time_since_epoch());
 }
+
+constexpr int _DAYS_IN_MONTH[] = {-1, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+constexpr int _DAYS_BEFORE_MONTH[13] = {-1, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
+
+// year -> 1 if leap year, else 0.
+constexpr bool _is_leap(int year)
+{
+  return (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0);
+}
+
+// year -> number of days before January 1st of year.
+constexpr int _days_before_year(int year)
+{
+  int y = year - 1;
+  return y * 365 + y / 4 - y / 100 + y / 400;
+}
+
+// year, month -> number of days in that month in that year.
+constexpr int _days_in_month(int year, int month)
+{
+  // assert((1 <= month) && (month <= 12));
+  if (month == 2 && _is_leap(year))
+    return 29;
+  return _DAYS_IN_MONTH[month];
+}
+
+// year, month -> number of days in year preceding first day of month.
+constexpr int _days_before_month(int year, int month)
+{
+  // assert((1 <= month) && (month <= 12));
+  return _DAYS_BEFORE_MONTH[month] + (month > 2 && _is_leap(year));
+}
+
+// year, month, day -> ordinal, considering 01-Jan-0001 as day 1.
+constexpr int _ymd2ord(int year, int month, int day)
+{
+  // assert((1 <= month) && (month <= 12));
+  int dim = _days_in_month(year, month);
+  // assert((1 <= day) && (day <= dim)); // day must be in 1..dim
+  return (_days_before_year(year) + _days_before_month(year, month) + day);
+}
+
 struct IsoCalendarDate
 {
   int year;
@@ -208,77 +243,66 @@ struct Date
   ISO calendar algorithm taken from python::datetime
   */
   IsoCalendarDate isocalendar() const;
+  /*
+  Return proleptic Gregorian ordinal for the year, month and day.
+
+  January 1 of year 1 is day 1.  Only the year, month and day values
+  contribute to the result.
+  */
+  constexpr int toordinal() const
+  {
+    return _ymd2ord(year, mon, day);
+  }
 };
 
-using ratio_one = std::ratio<1>;
-
-template <class _Period>
-struct Precision;
-template <>
-struct Precision<std::nano>
-{
-  typedef nanoseconds type;
-};
-template <>
-struct Precision<std::micro>
-{
-  typedef microseconds type;
-};
-template <>
-struct Precision<std::milli>
-{
-  typedef milliseconds type;
-};
-template <>
-struct Precision<ratio_one>
-{
-  typedef seconds type;
-};
-template <class _Period = ratio_one>
+template <class Precision = seconds>
 struct Time
 {
-  typedef typename Precision<_Period>::type precision;
+  static_assert(std::is_same_v<Precision, seconds> || std::is_same_v<Precision, milliseconds> || std::is_same_v<Precision, microseconds> || std::is_same_v<Precision, nanoseconds>);
   int hour;       /* hours since midnight [0-23] */
   int min;        /* minutes after the hour [0-59] */
   int sec;        /* seconds after the minute [0-60] */
   int subseconds; /* milliseconds or microseconds or nanoseconds depends on precision*/
 
-  constexpr precision to_duration()
+  constexpr Precision to_duration() const
   {
-    return precision(subseconds) + seconds(sec) + minutes(min) + hours(hour);
+    return Precision(subseconds) + seconds(sec + min * 60 + hour * 3600);
   }
 
-  constexpr operator precision()
+  constexpr operator Precision() const
   {
     return to_duration();
   }
 };
 
-template <class _Period = ratio_one>
+template <>
+constexpr seconds Time<seconds>::to_duration() const
+{
+  return seconds(sec + min * 60 + hour * 3600);
+}
+
+template <class Precision = seconds>
 struct Datetime
 {
-  typedef typename Time<_Period>::precision precision;
+  typedef Precision precision_type;
   Date date;
-  Time<_Period> time;
+  Time<Precision> time;
 
   // 一定要是UTC时间，不同时区，直接影响到底层的timestamp
-  constexpr Datetime(Date d, Time<_Period> t) : date(d), time(t)
-  {
-    calc_timestamp();
-  }
+  constexpr Datetime(Date d, Time<Precision> t) : date(d), time(t) {}
   // 一定要是UTC时间，不同时区，直接影响到底层的timestamp，默认本地时间
   constexpr Datetime(int year, int mon, int day, int hour = 0, int min = 0, int sec = 0) : Datetime({year, mon, day}, {hour, min, sec, 0}) {};
   // 一定要是UTC时间，不同时区，直接影响到底层的timestamp，默认本地时间
   constexpr Datetime(int year, int mon, int day, int hour, int min, int sec, int subseconds) : Datetime({year, mon, day}, {hour, min, sec, subseconds})
   {
-    static_assert(!std::is_same_v<_Period, ratio_one>);
+    static_assert(!std::is_same_v<Precision, seconds>);
   };
 
-  template <class _Rep, class __Period>
-  constexpr explicit Datetime(duration<_Rep, __Period> time_since_epoch) : ts_(duration_cast<precision>(time_since_epoch))
+  template <class _Precision>
+  explicit Datetime(_Precision time_since_epoch)
   {
-    seconds seconds_since_epoch = duration_cast<seconds>(ts_);
-    precision subseconds = ts_ - seconds_since_epoch;
+    seconds seconds_since_epoch = duration_cast<seconds>(time_since_epoch);
+    Precision subseconds = duration_cast<Precision>(time_since_epoch) - seconds_since_epoch;
     std::time_t t = (std::time_t)seconds_since_epoch.count();
     std::tm *_tm = std::gmtime(&t);
     date.year = _tm->tm_year + 1900;
@@ -290,74 +314,76 @@ struct Datetime
     time.subseconds = (int)subseconds.count();
   }
 
+  explicit Datetime(typename Precision::rep time_since_epoch) : Datetime(Precision(time_since_epoch)) {}
+
+  Precision to_duration() const;
+
   std::string isoformat() const
   {
-    return ::isoformat(ts_);
-  }
-
-  void calc_timestamp()
-  {
-    std::tm _tm{};
-    _tm.tm_year = date.year - 1900;
-    _tm.tm_mon = date.mon - 1;
-    _tm.tm_mday = date.day;
-    _tm.tm_hour = time.hour;
-    _tm.tm_min = time.min;
-    _tm.tm_sec = time.sec;
-    std::time_t sec = std::mktime(&_tm) - __tzoffset;
-    ts_ = precision(time.subseconds) + seconds(sec);
+    return ::isoformat(to_duration());
   }
 
   // return time since epoch
-  constexpr typename precision::rep to_timestamp() const
+  typename Precision::rep to_timestamp() const
   {
-    return ts_.count();
+    return to_duration().count();
   }
 
-  constexpr const precision &to_duration() const
+  operator Precision() const
   {
-    return ts_;
-  }
-
-  constexpr operator precision() const
-  {
-    return ts_;
+    return to_duration();
   }
 
   /** 对于纳秒 部分系统会有精度丢失 所以这里不能做隐式转换 */
-  constexpr explicit operator system_clock::time_point() const
+  explicit operator system_clock::time_point() const
   {
-    return ::fromtimestamp(ts_);
+    return ::fromtimestamp(to_duration());
   }
-
-private:
-  precision ts_; /* timestamp since epoch */
 };
 
-template <class _Period>
-bool operator==(const Datetime<_Period> &x, const Datetime<_Period> &y)
+template <class _Precision_x, class _Precision_y>
+bool operator==(const Datetime<_Precision_x> &x, const Datetime<_Precision_y> &y)
 {
-  return x.to_timestamp() == y.to_timestamp();
+  return x.to_duration() == y.to_duration();
+}
+
+template <class _Precision_x, class _Precision_y>
+auto operator-(const Datetime<_Precision_x> &x, const Datetime<_Precision_y> &y)
+{
+  return x.time.to_duration() - y.time.to_duration() + seconds((x.date.toordinal() - y.date.toordinal()) * 86400);
+}
+
+constexpr const seconds::rep seconds_till_epoch = (seconds::rep)Date{1970, 1, 1}.toordinal() * 86400;
+
+template <class Precision>
+Precision Datetime<Precision>::to_duration() const
+{
+  // 效率比较低
+  // std::tm _tm{};
+  // _tm.tm_year = date.year - 1900;
+  // _tm.tm_mon = date.mon - 1;
+  // _tm.tm_mday = date.day;
+  // _tm.tm_hour = time.hour;
+  // _tm.tm_min = time.min;
+  // _tm.tm_sec = time.sec;
+  // std::time_t sec = std::mktime(&_tm) - __tzoffset;
+  // return precision(time.subseconds) + seconds(sec);
+  return time.to_duration() + seconds((seconds::rep)date.toordinal() * 86400 - seconds_till_epoch);
 }
 
 namespace datetime
 {
-  template <class _Period = ratio_one, class _Rep, class __Period>
-  inline Datetime<_Period> fromtimestamp(duration<_Rep, __Period> time_since_epoch)
-  {
-    return Datetime<_Period>(time_since_epoch);
-  }
-
   // 按精度来转换
-  template <class _Period = ratio_one, typename Interger>
-  inline Datetime<_Period> fromtimestamp(Interger t)
+  template <class Precision = seconds, class _Duration_or_Integer>
+  inline Datetime<Precision> fromtimestamp(_Duration_or_Integer t)
   {
-    return Datetime<_Period>(typename Datetime<_Period>::precision(t));
+    return Datetime<Precision>(t);
   }
 }
 
 template <>
-inline constexpr Datetime<std::nano>::operator system_clock::time_point() const
+inline Datetime<nanoseconds>::operator system_clock::time_point() const
 {
-  return ::fromtimestamp(duration_cast<system_clock::duration>(ts_));
+  printf("Datetime<nanoseconds> to system_clock::time_point may lose precision\n");
+  return ::fromtimestamp(duration_cast<system_clock::duration>(to_duration()));
 }

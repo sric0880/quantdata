@@ -37,8 +37,7 @@ add_library(qdmongodb SHARED
 target_link_libraries(qdmongodb
   PUBLIC mongo::bsoncxx_shared
   PUBLIC mongo::mongocxx_shared
-  PUBLIC fmt::fmt
-  PRIVATE qddatetime)
+  PUBLIC fmt::fmt)
 
 
 add_library(quantdata SHARED

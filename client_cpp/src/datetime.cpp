@@ -2,7 +2,7 @@
 #include <assert.h>
 
 /**
- * system_clock 精度为微妙，纳秒会有精度丢失
+ * system_clock 部分系统精度为微妙，纳秒会有精度丢失
  * 不支持时区，默认为UTC时区
  */
 system_clock::time_point fromisoformat(const char *time_string)
@@ -14,9 +14,6 @@ system_clock::time_point fromisoformat(const char *time_string)
   {
     throw DatetimeInputError(std::string(time_string) + " is invalid iso time format");
   }
-  // mktime的实现会 += timezone
-  std::time_t sec = std::mktime(&t) - __tzoffset;
-  auto tp = system_clock::from_time_t(sec);
   char dot;
   if (ss >> dot && dot == '.')
   {
@@ -32,70 +29,22 @@ system_clock::time_point fromisoformat(const char *time_string)
     auto len = subseconds.size();
     if (len == 3)
     {
-      tp += milliseconds(std::stoi(subseconds));
+      return static_cast<system_clock::time_point>(Datetime<milliseconds>(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, std::stoi(subseconds)));
     }
     else if (len == 6)
     {
-      tp += microseconds(std::stoi(subseconds));
+      return static_cast<system_clock::time_point>(Datetime<microseconds>(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, std::stoi(subseconds)));
     }
     else if (len == 9)
     {
-      nanoseconds nanos(std::stoi(subseconds));
-      auto casted = duration_cast<system_clock::duration>(nanos);
-      if (casted != nanos)
-      {
-        fprintf(stderr, "fromisoformat %s will lose precision\n", time_string);
-      }
-      tp += casted;
+      return static_cast<system_clock::time_point>(Datetime<nanoseconds>(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, std::stoi(subseconds)));
     }
     else
     {
       throw DatetimeInputError(std::string(time_string) + " is invalid iso time format");
     }
-    return tp;
   }
-  return tp;
-}
-
-constexpr const int _DAYS_IN_MONTH[] = {-1, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-constexpr const int _DAYS_BEFORE_MONTH[13] = {-1, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
-
-// year -> 1 if leap year, else 0.
-bool _is_leap(int year)
-{
-  return (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0);
-}
-
-// year -> number of days before January 1st of year.
-int _days_before_year(int year)
-{
-  int y = year - 1;
-  return y * 365 + y / 4 - y / 100 + y / 400;
-}
-
-// year, month -> number of days in that month in that year.
-int _days_in_month(int year, int month)
-{
-  // assert((1 <= month) && (month <= 12));
-  if (month == 2 && _is_leap(year))
-    return 29;
-  return _DAYS_IN_MONTH[month];
-}
-
-// year, month -> number of days in year preceding first day of month.
-int _days_before_month(int year, int month)
-{
-  // assert((1 <= month) && (month <= 12));
-  return _DAYS_BEFORE_MONTH[month] + (month > 2 && _is_leap(year));
-}
-
-// year, month, day -> ordinal, considering 01-Jan-0001 as day 1.
-int _ymd2ord(int year, int month, int day)
-{
-  // assert((1 <= month) && (month <= 12));
-  int dim = _days_in_month(year, month);
-  // assert((1 <= day) && (day <= dim)); // day must be in 1..dim
-  return (_days_before_year(year) + _days_before_month(year, month) + day);
+  return static_cast<system_clock::time_point>(Datetime(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec));
 }
 
 // Helper to calculate the day number of the Monday starting week 1
