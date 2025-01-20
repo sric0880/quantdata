@@ -7,6 +7,10 @@ import numpy as np
 conn_duckdb: duckdb.DuckDBPyConnection = None
 
 
+def get_conn_duckdb():
+    return conn_duckdb
+
+
 def duckdb_connect_attach(
     extensions: tuple = None,
     memory_limit: str = None,

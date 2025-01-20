@@ -46,11 +46,11 @@ def open_duckdb(**config):
     if conn_duckdb is None:
         duckdb_connect_attach(**config)
         try:
-            yield conn_duckdb
+            yield get_conn_duckdb()
         finally:
             duckdb_close()
     else:
-        yield conn_duckdb
+        yield get_conn_duckdb()
 
 
 @contextlib.contextmanager
@@ -58,8 +58,8 @@ def open_mongodb(**config):
     if conn_mongodb is None:
         mongo_connect(**config)
         try:
-            yield conn_mongodb
+            yield get_conn_mongodb()
         finally:
             mongo_close()
     else:
-        yield conn_mongodb
+        yield get_conn_mongodb()
