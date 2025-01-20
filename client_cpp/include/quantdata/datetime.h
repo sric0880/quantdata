@@ -32,6 +32,11 @@ constexpr system_clock::time_point fromtimestamp(Interger sec)
   return fromtimestamp(seconds(sec));
 }
 
+/**
+ * double表示时间，会有精度误差，尤其是Linux下time_point是纳秒级，会差几纳秒
+ * 其次，double本身表示最高有效位（包括整数部分）是15位，也是有精度误差。
+ * 一定要慎用该函数。
+ */
 template <>
 constexpr system_clock::time_point fromtimestamp<double>(double ts)
 {

@@ -7,7 +7,6 @@ int main(int, char **)
   auto nowtime = now();
   auto micro_count = nowtime.time_since_epoch().count();
   auto nano = nanoseconds(1734412701444555666);
-  double ts = 1734412701.444555666;
   auto micro = duration_cast<microseconds>(nano);
   auto milli = duration_cast<milliseconds>(micro);
   auto sec = duration_cast<seconds>(milli);
@@ -72,7 +71,6 @@ int main(int, char **)
   QD_ASSERT(fromtimestamp_milli(milli.count()) == time_point<system_clock>(milli), "");
   QD_ASSERT(fromtimestamp_micro(micro.count()) == time_point<system_clock>(micro), "");
   QD_ASSERT(fromtimestamp_nano(nano.count()) == system_clock::time_point(duration_cast<system_clock::duration>(nano)), "");
-  QD_ASSERT(fromtimestamp(ts) == fromtimestamp_nano(nano.count()), "");
 
   QD_ASSERT(datetime::fromtimestamp<microseconds>(micro.count()).isoformat() == "2024-12-17 05:18:21.444555", "");
   QD_ASSERT(datetime::fromtimestamp<milliseconds>(micro).isoformat() == "2024-12-17 05:18:21.444", "");
