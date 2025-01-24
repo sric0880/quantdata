@@ -102,7 +102,11 @@ sudo cmake --build ./build --target install
 
 在Visual Studio中调试：修改`CMakePresets.json`中的configurePresets > windows-base > CMAKE_PREFIX_PATH。这个是前面安装mongo cxx driver的`CMAKE_INSTALL_PREFIX`，告诉CMake去哪个目录查找MongoDB的库文件。
 
-命令行安装：DCMAKE_PREFIX_PATH 改成自己的目录。
+> 一般cmake默认都安装在`C:\Program Files (x86)\`目录下，find_package()也会默认去该目录下查找。比如find_package(mongocxx)，会去目录`C:\Program Files (x86)\[mongocxx]\lib\cmake\[mongocxx]`下查找`mongocxx-config.cmake`文件，只有前者[]文件夹名和后者[]内的文件夹名相同时，才能找到，否者就要通过指定CMAKE_PREFIX_PATH 告诉cmake从哪里查找。
+
+> CMAKE_PREFIX_PATH支持传入多个目录，以;隔开。
+
+命令行安装：CMAKE_PREFIX_PATH 改成自己的目录。
 
 ```powershell
 cmake -S . -B ./build -G "Visual Studio 17 2022" -DCMAKE_PREFIX_PATH=C:\"Program Files (x86)"\mongo-c-driver
