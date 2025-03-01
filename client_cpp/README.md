@@ -90,6 +90,8 @@ Windows下载的文件中有个duckdb.dll和duckdb.lib，将它们拷贝到`C:\W
 
 ## Install
 
+支持编译选项 `-DBUILD_DUCKDB=0` 禁止编译和安装duckdb相关的库
+
 ### MacOS/Linux
 
 ```sh

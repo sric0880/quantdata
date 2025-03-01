@@ -9,9 +9,10 @@ if(MSVC)
   set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
+option(BUILD_DUCKDB "enable build qdduckdb" TRUE)
+
 find_package(fmt CONFIG REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)
-find_library(duckdb duckdb REQUIRED)
 find_package(mongocxx REQUIRED)
 find_package(bsoncxx REQUIRED)
 
@@ -25,12 +26,6 @@ add_library(qddatetime STATIC
 # (e.g. for linking it into another shared library such as a Python extension)
 set_property(TARGET qddatetime PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-add_library(qdduckdb SHARED
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.duckdb.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/third_party/duckdb/duckdb.hpp"
-)
-target_link_libraries(qdduckdb PUBLIC ${duckdb} PUBLIC fmt::fmt PRIVATE qddatetime)
-
 add_library(qdmongodb SHARED
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.mongodb.cpp"
 )
@@ -40,6 +35,13 @@ target_link_libraries(qdmongodb
   PUBLIC fmt::fmt)
 
 
+if(BUILD_DUCKDB)
+find_library(duckdb duckdb REQUIRED)
+add_library(qdduckdb SHARED
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.duckdb.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third_party/duckdb/duckdb.hpp"
+)
+target_link_libraries(qdduckdb PUBLIC ${duckdb} PUBLIC fmt::fmt PRIVATE qddatetime)
 add_library(quantdata SHARED
   "${CMAKE_CURRENT_SOURCE_DIR}/src/quantdata.duckdb.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/third_party/duckdb/duckdb.hpp"
@@ -53,16 +55,10 @@ target_link_libraries(quantdata
   PUBLIC yaml-cpp::yaml-cpp
   PUBLIC fmt::fmt
   PRIVATE qddatetime)
-
+endif()
 
 # For CTest
 enable_testing()
-
-# test duckdb
-add_executable(test_duckdb "${CMAKE_CURRENT_SOURCE_DIR}/test/test_duckdb.cpp")
-target_link_libraries(test_duckdb qdduckdb)
-add_test(NAME "test_duckdb" COMMAND "test_duckdb" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
-set_tests_properties("test_duckdb" PROPERTIES FAIL_REGULAR_EXPRESSION "error")
 
 # test mongodb
 add_executable(test_mongodb "${CMAKE_CURRENT_SOURCE_DIR}/test/test_mongodb.cpp")
@@ -75,20 +71,38 @@ add_executable(test_datetime "${CMAKE_CURRENT_SOURCE_DIR}/test/test_datetime.cpp
 target_link_libraries(test_datetime qddatetime)
 add_test(NAME "test_datetime" COMMAND "test_datetime" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 
+if(BUILD_DUCKDB)
+# test duckdb
+add_executable(test_duckdb "${CMAKE_CURRENT_SOURCE_DIR}/test/test_duckdb.cpp")
+target_link_libraries(test_duckdb qdduckdb)
+add_test(NAME "test_duckdb" COMMAND "test_duckdb" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+set_tests_properties("test_duckdb" PROPERTIES FAIL_REGULAR_EXPRESSION "error")
+
 # test quantdata
 add_executable(test_quantdata "${CMAKE_CURRENT_SOURCE_DIR}/test/test_quantdata.cpp")
 target_link_libraries(test_quantdata quantdata)
 add_test(NAME "test_quantdata" COMMAND "test_quantdata" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
 
 # for Install
 # example from https://cmake.org/cmake/help/latest/manual/cmake-packages.7.html#config-file-packages
+if(BUILD_DUCKDB)
 install(
-  TARGETS qddatetime qdduckdb qdmongodb quantdata
+  TARGETS qddatetime qdmongodb qdduckdb quantdata
   EXPORT quantdata_Targets
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin
   INCLUDES DESTINATION include)
+else()
+install(
+  TARGETS qddatetime qdmongodb
+  EXPORT quantdata_Targets
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include)
+endif()
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
