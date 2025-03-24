@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quantdata"
-version = "1.3"
+version = "1.3.1"
 authors = [
     {name = "lzq", email = 'justgotpaid88@qq.com'}
 ]
@@ -15,6 +15,7 @@ dependencies = ["numpy>=1.26.4", "pymongo", "pyyaml"]
 [project.optional-dependencies]
 tiledb = [ "tiledb" ]
 duckdb = [ "duckdb" ]
+tdengine = [ "taos" ]
 
 [tool.setuptools]
 packages = ["quantdata", "quantdata.analysis", "quantdata.databases"]

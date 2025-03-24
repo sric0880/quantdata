@@ -1,6 +1,5 @@
 import atexit
 from collections import defaultdict
-from datetime import datetime
 
 import numpy as np
 from pymongo import MongoClient
@@ -76,65 +75,3 @@ def mongo_fetchnumpy(cursor):
     for col, lst in ret.items():
         ret[col] = np.array(lst)
     return ret
-
-
-def mongo_get_trade_cal(
-    db_name: str,
-    collection_name="trade_cal",
-    start_date: datetime = None,
-    end_date: datetime = None,
-):
-    """返回从start_date到end_date(包括本身)的交易日期"""
-    if start_date and end_date:
-        return mongo_get_data(
-            db_name,
-            collection_name,
-            {
-                "$and": [
-                    {"status": 1},
-                    {"_id": {"$gte": start_date}},
-                    {"_id": {"$lte": end_date}},
-                ]
-            },
-        )
-    elif start_date:
-        return mongo_get_data(
-            db_name,
-            collection_name,
-            {"$and": [{"status": 1}, {"_id": {"$gte": start_date}}]},
-        )
-    elif end_date:
-        return mongo_get_data(
-            db_name,
-            collection_name,
-            {"$and": [{"status": 1}, {"_id": {"$lte": end_date}}]},
-        )
-    else:
-        return mongo_get_data(db_name, collection_name, {"status": 1})
-
-
-def mongo_get_last_trade_dt(db_name: str, dt: datetime):
-    """从`dt`开始的上一个交易日"""
-    result = (
-        conn_mongodb[db_name]["trade_cal"]
-        .find({"$and": [{"status": 1}, {"_id": {"$lte": dt}}]})
-        .sort([("_id", -1)])
-        .limit(1)
-    )
-    try:
-        return result.next()["_id"]
-    except StopIteration:
-        return None
-
-
-def mongo_get_next_trade_dt(db_name: str, dt: datetime):
-    """从`dt`开始的下一个交易日"""
-    result = (
-        conn_mongodb[db_name]["trade_cal"]
-        .find({"$and": [{"status": 1}, {"_id": {"$gt": dt}}]})
-        .limit(1)
-    )
-    try:
-        return result.next()["_id"]
-    except StopIteration:
-        return None

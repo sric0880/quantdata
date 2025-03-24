@@ -1,6 +1,12 @@
 # quantdata
 
-作者个人研究项目，这里只提供样本数据结构，简单的导入流程，具体数据需要自己采集和拉取。还包括数据库客户端接入API
+作者个人研究项目，这里只提供样本数据结构，简单的导入流程，具体数据需要自己采集和拉取。具体的采集和导入见项目：[quantdatasource](https://github.com/sric0880/quantdatasource)
+
+包括数据库客户端接入API
+
+- Python: Mongodb, duckdb, tdengine, tiledb
+
+- C++: Mongodb, duckdb
 
 ## 数据结构
 
@@ -18,7 +24,7 @@
 存储：
 
 - 按行存储的数据，使用MongoDB
-- 按列存储的数据，使用其他数据库，主要用于价格数据，可以是一维（时间），也可以是二维（时间+symbols
+- 按列存储的数据，使用其他数据库，主要用于价格数据，可以是一维（时间），也可以是二维（时间+symbols）
 
 ### 启动
 

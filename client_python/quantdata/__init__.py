@@ -6,6 +6,13 @@ from .databases._duckdb import *
 from .databases._duckdb_api import *
 from .databases._mongodb import *
 
+try:
+    from .databases._tdengine import *
+
+    has_module_taos = True
+except ImportError:
+    has_module_taos = False
+
 
 def init_db(config: dict = None, stype: str = None):
     """
@@ -27,18 +34,24 @@ def init_db(config: dict = None, stype: str = None):
         duckdb_connect_attach(**config["duckdb"])
     if "mongodb" in config:
         mongo_connect(**config["mongodb"])
+    if "tdengine" in config:
+        tdengine_connect(**config["tdengine"])
 
 
 @contextlib.contextmanager
 def open_dbs(config: dict = None, stype: str = None):
     assert conn_duckdb is None
     assert conn_mongodb is None
+    if has_module_taos:
+        assert conn_tdengine is None
     init_db(config, stype)
     try:
         yield
     finally:
         duckdb_close()
         mongo_close()
+        if has_module_taos:
+            tdengine_close()
 
 
 @contextlib.contextmanager
@@ -63,3 +76,17 @@ def open_mongodb(**config):
             mongo_close()
     else:
         yield get_conn_mongodb()
+
+
+if has_module_taos:
+
+    @contextlib.contextmanager
+    def open_tdengine(**config):
+        if conn_tdengine is None:
+            tdengine_connect(**config)
+            try:
+                yield get_conn_tdengine()
+            finally:
+                tdengine_close()
+        else:
+            yield get_conn_tdengine()
