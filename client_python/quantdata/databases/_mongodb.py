@@ -47,7 +47,7 @@ def mongo_get_data(
     db_name: str,
     collection_name: str,
     query: dict = None,
-    sort_by: dict = None,
+    sort_by: list = None,
     max_count: int = None,
     **find_kwargs,
 ):

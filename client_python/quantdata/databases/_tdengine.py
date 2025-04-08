@@ -109,7 +109,7 @@ class NewTaosResult:
         return pd.DataFrame(data, columns=[field.name for field in self._r.fields])
 
 
-def cast_field_to_nptype(field):
+def _cast_field_to_nptype(field):
     nptype = field_type_strings[field.type]
     if nptype == "U":
         nptype += str(field.bytes)
@@ -125,7 +125,7 @@ def _get_df_results(sql, return_type):
         names = [field.name for field in result.fields]
         return names, result.fetch_all()
     elif return_type == 4:
-        dtype = [(field.name, cast_field_to_nptype(field)) for field in result.fields]
+        dtype = [(field.name, _cast_field_to_nptype(field)) for field in result.fields]
         return np.array(result.fetch_all(), dtype=dtype).view(np.recarray)
     else:
         new_result = NewTaosResult(result)
@@ -136,12 +136,12 @@ def _get_df_results(sql, return_type):
     return None
 
 
-def get_count_of_rows(tbname):
+def td_get_count_of_rows(tbname):
     counts = _get_df_results(f"SELECT count(dt) FROM {tbname}", 1)
     return counts["count(dt)"][0]
 
 
-def get_data(
+def td_get_data(
     tablename,
     stable=None,
     fields: list = None,
@@ -317,9 +317,9 @@ def get_data(
     return ret
 
 
-def get_data_last_row(tablename, stable=None, fields: list = None, n=1):
+def td_get_data_last_row(tablename, stable=None, fields: list = None, n=1):
     tablename = _get_tbname(tablename, stable=stable)
-    rows_count = get_count_of_rows(tablename)
+    rows_count = td_get_count_of_rows(tablename)
     _fields = "*"
     if fields is not None:
         _fields = ", ".join(fields)
@@ -337,7 +337,7 @@ def get_data_last_row(tablename, stable=None, fields: list = None, n=1):
         return None
 
 
-def get_klines(
+def td_get_klines(
     symbols,
     intervals,
     kBarMaxNum: int = None,
@@ -359,7 +359,7 @@ def get_klines(
     for symbol in symbols:
         ret[symbol] = {}
         for itv in intervals:
-            ret[symbol][itv] = get_data(
+            ret[symbol][itv] = td_get_data(
                 f"{symbol}_{itv}",
                 stable=stable,
                 till_dt=endTime,
@@ -371,7 +371,7 @@ def get_klines(
     return ret
 
 
-def get_wss_data(
+def td_get_wss_data(
     stable, dt, fields: list = None, tags: dict = None, use_df=True, return_type=1
 ):
     """

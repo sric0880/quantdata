@@ -4,11 +4,15 @@ from ._duckdb import *
 def get_data_last_row(
     db_name: str,
     tablename: str,
-    fields: list[str],
-    till_microsec: int,
+    fields: list[str] = None,
+    till_microsec: int = 0,
     side: str = "right",
     N: int = 1,
-):
+) -> duckdb.DuckDBPyRelation:
+    """
+    Return: DuckDBPyRelation
+        call `fetchone`, `fetchmany`, `fetchall`, `fetchdf`, `fetchnumpy` on returned obj
+    """
     if side is None:
         lt = "<"
     elif side == "right":
@@ -20,7 +24,7 @@ def get_data_last_row(
     else:
         filter = None
     return duckdb_get_array_last_rows(
-        conn_duckdb, db_name, tablename, attrs=fields, filter=filter, N=N
+        db_name, tablename, attrs=fields, filter=filter, N=N
     )
 
 

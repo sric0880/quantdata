@@ -1,7 +1,3 @@
-"""
-没有测试过
-"""
-
 from collections import defaultdict
 
 import pandas as pd
@@ -9,13 +5,15 @@ import pytz
 
 from quantdata import get_data_df, get_data_last_row, mongo_get_data
 
+dbname = "finance"
+
 
 def stat_market(pct):
     """
     统计全市场涨幅超{pct}的股票的比例
     """
     all_market_perctgs = defaultdict(list)
-    all_stocks = mongo_get_data("finance", "basic_info_stocks")
+    all_stocks = mongo_get_data(dbname, "basic_info_stocks")
     for stock in all_stocks:
         symbol = stock["symbol"]
         # print(symbol)
@@ -88,7 +86,7 @@ exclude_concept = [
 
 def get_ths_concepts_names():
     index_list = mongo_get_data(
-        "finance",
+        dbname,
         "basic_info_ths_concepts",
         projection={"symbol": 1, "name": 1},
     )
@@ -99,7 +97,7 @@ def stat_ths_concepts(days, n, m, logger):
     """
     统计同花顺概念板块前{n}日涨停股重复最多的{m}个概念
     """
-    all_stocks = mongo_get_data("finance", "basic_info_stocks")
+    all_stocks = mongo_get_data(dbname, "basic_info_stocks")
     start_dt = days[0]
     end_dt = days[-1]
     maxup_stock_lists = defaultdict(list)
@@ -136,7 +134,7 @@ def ths_concepts_toprank_in_m_days(dt, top_n, m, logger):
     {m}个交易日内有上过涨幅榜前{top_n}的板块
     """
     index_list = mongo_get_data(
-        "finance", "basic_info_ths_concepts", projection={"symbol": 1}
+        dbname, "basic_info_ths_concepts", projection={"symbol": 1}
     )
     data = {}
     dt = pytz.utc.localize(dt)
@@ -176,7 +174,7 @@ def get_stocks_of_index(collection_name, index_symbol, dt):
     """
     df = pd.DataFrame(
         mongo_get_data(
-            "finance",
+            dbname,
             collection_name,
             query={"$and": [{"index_code": index_symbol}, {"tradedate": {"$lte": dt}}]},
         )
@@ -214,7 +212,7 @@ def get_indexes_of_stock(collection_name, symbol, dt):
     """
     df = pd.DataFrame(
         mongo_get_data(
-            "finance",
+            dbname,
             collection_name,
             query={"$and": [{"stock_code": symbol}, {"tradedate": {"$lte": dt}}]},
         )
@@ -229,7 +227,7 @@ def include_in_ths_concepts(stock_list, dt, concept_codes, logger):
     if not stock_list or not concept_codes:
         return stock_list
     ret = []
-    df = pd.DataFrame(mongo_get_data("finance", "constituent_ths_index"))
+    df = pd.DataFrame(mongo_get_data(dbname, "constituent_ths_index"))
     for stock in stock_list:
         sub_df = df.loc[(df["tradedate"] <= dt) & (df["stock_code"] == stock)]
         concepts = _get_indexes_of_stock(sub_df)
@@ -248,7 +246,7 @@ def top_concepts_of_stocks(stock_list, dt, limit=None):
     """
     统计股票所属概念前{limit}名
     """
-    df = pd.DataFrame(mongo_get_data("finance", "constituent_ths_index"))
+    df = pd.DataFrame(mongo_get_data(dbname, "constituent_ths_index"))
     concepts_count = defaultdict(int)
     for stock in stock_list:
         sub_df = df.loc[(df["tradedate"] <= dt) & (df["stock_code"] == stock)]
@@ -266,7 +264,7 @@ def get_indexes_of_stocks(stock_list, dt):
     """
     统计股票所属概念前{limit}名
     """
-    df = pd.DataFrame(mongo_get_data("finance", "constituent_ths_index"))
+    df = pd.DataFrame(mongo_get_data(dbname, "constituent_ths_index"))
     all_concepts = {}
     for stock in stock_list:
         sub_df = df.loc[(df["tradedate"] <= dt) & (df["stock_code"] == stock)]
@@ -280,7 +278,61 @@ def ths_hot_stocks(top_n, dt):
     获取{dt}当天的同花顺热股前{top_n}名
     """
     hot_stocks = pd.DataFrame(
-        mongo_get_data("finance", "hot_stocks_ths", query_dict={"date": dt})
+        mongo_get_data(dbname, "hot_stocks_ths", query={"date": dt})
     )
     hot_stocks = hot_stocks.nsmallest(top_n, "order", keep="first")
     return hot_stocks
+
+
+def get_finance_data(tablename, symbol, fields):
+    projection = {
+        "f_ann_date": 1,
+        "end_date": 1,
+    }
+    for f in fields:
+        projection[f] = 1
+    df = pd.DataFrame(
+        mongo_get_data(
+            dbname,
+            tablename,
+            query={"ts_code": symbol},
+            projection=projection,
+            sort_by=[("f_ann_date", 1), ("end_date", 1)],
+        )
+    )
+    if df.empty:
+        return df
+    # drop duplicates of finance_data
+    df["last_end_date"] = df["end_date"].shift(1, fill_value=df["end_date"].iloc[0])
+    df = df.loc[df["end_date"] >= df["last_end_date"]]
+    df = df.drop(columns=["last_end_date"])
+    df.reset_index(drop=True, inplace=True)
+    return df
+
+
+def merge_finance_data(*data):
+    l = len(data)
+    if l < 1:
+        return None
+    elif l == 1:
+        return data[0]
+    else:
+        left = data[0]
+        right = merge_finance_data(*data[1:])
+        if (
+            left is not None
+            and not left.empty
+            and right is not None
+            and not right.empty
+        ):
+            df = pd.merge_ordered(left, right, on=["f_ann_date", "end_date"])
+            df.reset_index(drop=True, inplace=True)
+            return df
+        else:
+            return None
+
+
+def expand_finance_data_to_daily(daily_df, fdata: pd.DataFrame, fields):
+    idxs = fdata["f_ann_date"].searchsorted(daily_df.index, side="right") - 1
+    for col in fields:
+        daily_df[col] = list(map(fdata[col].get, idxs))

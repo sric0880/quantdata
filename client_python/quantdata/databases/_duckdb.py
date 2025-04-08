@@ -16,6 +16,7 @@ def duckdb_connect_attach(
     memory_limit: str = None,
     threads_limit: int = None,
     shared_memory: bool = False,
+    read_only=True,
     uris=[],
 ):
     """
@@ -53,7 +54,10 @@ def duckdb_connect_attach(
     for uri in uris:
         print(f"duckdb attach {uri}...")
         db_name = pathlib.Path(uri).name.replace(".db", "")
-        conn_duckdb.execute(f"ATTACH IF NOT EXISTS '{uri}' as {db_name} (READ_ONLY);")
+        read_only_sql = "(READ_ONLY)" if read_only else ""
+        conn_duckdb.execute(
+            f"ATTACH IF NOT EXISTS '{uri}' as {db_name} {read_only_sql};"
+        )
 
 
 @atexit.register
