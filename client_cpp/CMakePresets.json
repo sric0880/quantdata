@@ -7,11 +7,11 @@
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/out/build/${presetName}",
             "installDir": "${sourceDir}/out/install/${presetName}",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "cl.exe",
-                "CMAKE_CXX_COMPILER": "cl.exe",
-                "CMAKE_PREFIX_PATH": "C:/Program Files (x86)/mongo-c-driver"
-            },
+          "cacheVariables": {
+            "CMAKE_C_COMPILER": "cl.exe",
+            "CMAKE_CXX_COMPILER": "cl.exe",
+            "CMAKE_PREFIX_PATH": "C:/Program Files (x86)/mongo-c-driver;C:/Program Files/MONGO_CXX_DRIVER"
+          },
             "condition": {
                 "type": "equals",
                 "lhs": "${hostSystemName}",

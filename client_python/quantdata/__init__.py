@@ -5,6 +5,7 @@ import yaml
 from .databases._duckdb import *
 from .databases._duckdb_api import *
 from .databases._mongodb import *
+from .databases._filedb import *
 
 try:
     from .databases._tdengine import *
@@ -34,6 +35,8 @@ def init_db(config: dict = None, stype: str = None):
         duckdb_connect_attach(**config["duckdb"])
     if "mongodb" in config:
         mongo_connect(**config["mongodb"])
+    if "filedb" in config:
+        filedb_connect(**config["filedb"])
     if "tdengine" in config:
         tdengine_connect(**config["tdengine"])
 

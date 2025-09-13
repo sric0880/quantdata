@@ -58,7 +58,7 @@ Windows下载的文件中有个duckdb.dll和duckdb.lib，将它们拷贝到`C:\W
 
     ```sh
     # CMAKE_INSTALL_PREFIX 要设置成刚才安装c driver的路径
-    cmake.exe -G "Visual Studio 17 2022" -A "x64" -DCMAKE_CXX_STANDARD=17 -DCMAKE_INSTALL_PREFIX=C:\"Program Files (x86)"\mongo-c-driver -DBUILD_VERSION="4.0.0"
+    cmake.exe -G "Visual Studio 17 2022" -A "x64" -DCMAKE_CXX_STANDARD=17 -DCMAKE_PREFIX_PATH=C:\"Program Files (x86)"\mongo-c-driver -DBUILD_VERSION="4.1.1"
     cmake --build . --config RelWithDebInfo
     cmake --build . --target install --config RelWithDebInfo
     ```
@@ -102,7 +102,7 @@ sudo cmake --build ./build --target install
 
 ### Windows
 
-在Visual Studio中调试：修改`CMakePresets.json`中的configurePresets > windows-base > CMAKE_PREFIX_PATH。这个是前面安装mongo cxx driver的`CMAKE_INSTALL_PREFIX`，告诉CMake去哪个目录查找MongoDB的库文件。
+在Visual Studio中调试：修改`CMakePresets.json`中的configurePresets > windows-base > CMAKE_PREFIX_PATH。这个是前面安装mongo c/cxx driver的路径，告诉CMake去哪个目录查找MongoDB的库文件。
 
 > 一般cmake默认都安装在`C:\Program Files (x86)\`目录下，find_package()也会默认去该目录下查找。比如find_package(mongocxx)，会去目录`C:\Program Files (x86)\[mongocxx]\lib\cmake\[mongocxx]`下查找`mongocxx-config.cmake`文件，只有前者[]文件夹名和后者[]内的文件夹名相同时，才能找到，否者就要通过指定CMAKE_PREFIX_PATH 告诉cmake从哪里查找。
 
@@ -111,7 +111,7 @@ sudo cmake --build ./build --target install
 命令行安装：CMAKE_PREFIX_PATH 改成自己的目录。
 
 ```powershell
-cmake -S . -B ./build -G "Visual Studio 17 2022" -DCMAKE_PREFIX_PATH=C:\"Program Files (x86)"\mongo-c-driver
+cmake -S . -B ./build -G "Visual Studio 17 2022"  -DCMAKE_PREFIX_PATH="C:\Program Files\MONGO_CXX_DRIVER;C:\Program Files (x86)\mongo-c-driver"
 cmake --build ./build --config RelWithDebInfo --parallel
 cmake --build ./build --target install --config RelWithDebInfo
 ```
