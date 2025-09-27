@@ -1,6 +1,6 @@
 import os
-from pathlib import Path
 from datetime import date
+from pathlib import Path
 
 import polars as pl
 
@@ -23,6 +23,7 @@ def filedb_get_at(
     """
     Params:
         - fields: 至少要含有["dt", "symbol"]，如果要复权，还应该包括["open", "high", "low", "close"]
+        - day: eg. "2025-09-08"
     """
     return filedb_get_between(
         data_dirname,
@@ -41,7 +42,14 @@ def filedb_get_gte(
     n: int = 1,
     adj_factor_mongo_params: tuple = None,
     groupby_sybmol=True,
+    groupby_freq: str = None,
 ):
+    """
+    Params:
+        - fields: 至少要含有["dt", "symbol"]，如果要复权，还应该包括["open", "high", "low", "close"]
+        - day: eg. "2025-09-08"
+        - groupby_freq: "1w" for week, "1mo" for month, and default None is for daily. 需要复权数据
+    """
     valid_file_list = _get_valid_file_list_after(data_dirname, day, n)
     return _filedb_get(
         data_dirname,
@@ -49,6 +57,7 @@ def filedb_get_gte(
         fields,
         adj_factor_mongo_params,
         groupby_sybmol,
+        groupby_freq,
     )
 
 
@@ -59,7 +68,13 @@ def filedb_get_lte(
     n: int = 1,
     adj_factor_mongo_params: tuple = None,
     groupby_sybmol=True,
+    groupby_freq: str = None,
 ):
+    """
+    Params:
+        - fields: 至少要含有["dt", "symbol"]，如果要复权，还应该包括["open", "high", "low", "close"]
+        - groupby_freq: "1w" for week, "1mo" for month, and default None is for daily. 需要复权数据
+    """
     valid_file_list = _get_valid_file_list_before(data_dirname, day, n)
     return _filedb_get(
         data_dirname,
@@ -67,6 +82,7 @@ def filedb_get_lte(
         fields,
         adj_factor_mongo_params,
         groupby_sybmol,
+        groupby_freq,
     )
 
 
@@ -77,10 +93,12 @@ def filedb_get_between(
     end_date: str = 0,
     adj_factor_mongo_params: tuple = None,
     groupby_sybmol=True,
+    groupby_freq: str = None,
 ) -> pl.DataFrame:
     """
     Params:
         - fields: 至少要含有["dt", "symbol"]，如果要复权，还应该包括["open", "high", "low", "close"]
+        - groupby_freq: "1w" for week, "1mo" for month, and default None is for daily. 需要复权数据
     """
     valid_file_list = _get_valid_file_list(data_dirname, start_date, end_date)
     return _filedb_get(
@@ -89,6 +107,18 @@ def filedb_get_between(
         fields,
         adj_factor_mongo_params,
         groupby_sybmol,
+        groupby_freq,
+    )
+
+
+def filedb_groupby_freq(df: pl.DataFrame, groupby_freq: str):
+    return df.group_by(pl.col("dt").dt.truncate(groupby_freq), maintain_order=True).agg(
+        pl.col("adj_open").first(),
+        pl.col("adj_high").max(),
+        pl.col("adj_low").min(),
+        pl.col("adj_close").last(),
+        pl.col("volume").sum(),
+        pl.col("amount").sum(),
     )
 
 
@@ -98,24 +128,30 @@ def _filedb_get(
     fields: list[str] = None,
     adj_factor_mongo_params: tuple = None,
     groupby_sybmol=True,
+    groupby_freq: str = None,
 ) -> pl.DataFrame:
     if not sorted_files:
         raise ValueError(f"Empty file list")
+    if groupby_freq and not groupby_sybmol:
+        raise ValueError(
+            f"groupby_freq is {groupby_freq}, param groupby_sybmol must be True"
+        )
     start_date, end_date = sorted_files[0][0], sorted_files[-1][0]
-    df = pl.concat(
-        [
-            pl.read_parquet(_home_dir / data_dirname / f[1], columns=fields)
-            for f in sorted_files
-        ]
+    df = pl.read_parquet(
+        [_home_dir / data_dirname / f[1] for f in sorted_files], columns=fields
     )
     if adj_factor_mongo_params:
         db_name, coll_name = adj_factor_mongo_params
         df = apply_adjust_factors(df, db_name, coll_name, start_date, end_date)
-    return (
-        df
-        if not groupby_sybmol
-        else {symbol: sd for (symbol,), sd in df.group_by(by="symbol")}
-    )
+    if not groupby_sybmol:
+        return df
+    elif groupby_freq:
+        return {
+            symbol: filedb_groupby_freq(sd, groupby_freq)
+            for (symbol,), sd in df.group_by(by="symbol")
+        }
+    else:
+        return {symbol: sd for (symbol,), sd in df.group_by(by="symbol")}
 
 
 def _get_valid_file_list(data_path: str, start_date: str, end_date: str):
@@ -160,7 +196,9 @@ def fetch_adjust_factors(db_name, coll_name, start_date, end_date) -> pl.DataFra
     if adj_df.is_empty():
         raise RuntimeError("Mongodb has no adjust factors")
     adj_df = adj_df.rename(mapping={"tradedate": "dt"}).drop("_id")
-    adj_df = adj_df.with_columns(pl.col("dt").cast(pl.Datetime("ms")))
+    adj_df = adj_df.with_columns(pl.col("dt").cast(pl.Datetime("ms"))).select(
+        ["dt", "symbol", "adjust_factor"]
+    )
     _start_dt = date.fromisoformat(start_date)
     _end_dt = date.fromisoformat(end_date)
     sub_df = pl.DataFrame(
@@ -170,7 +208,8 @@ def fetch_adjust_factors(db_name, coll_name, start_date, end_date) -> pl.DataFra
     sub_df = sub_df.with_columns(
         adjust_factor=1.0,
         symbol=pl.lit("_temp"),
-    ).select(["adjust_factor", "dt", "symbol"])
+    ).select(["dt", "symbol", "adjust_factor"])
+    # 列与列之间要对齐，否则报错
     adj_df = pl.concat([adj_df, sub_df])
     adj_df = adj_df.sort("dt")
     piv_df = adj_df.pivot("symbol", index="dt", values="adjust_factor").fill_null(
@@ -193,3 +232,41 @@ def apply_adjust_factors(daily_df, db_name, coll_name, start_date, end_date):
             adj_close=pl.col("close") * pl.col("adjust_factor"),
         )
     )
+
+
+def filedb_get_schema(data_dirname: str, day: str):
+    dest_file = _home_dir / data_dirname / f"{day}.parquet"
+    return pl.read_parquet_schema(dest_file)
+
+
+def filedb_has_columns(data_dirname: str, day: str, fields: list[str]):
+    schema = filedb_get_schema(data_dirname, day)
+    return [field in schema for field in fields]
+
+
+def filedb_has_any_columns(data_dirname: str, day: str, fields: list[str]):
+    return any(filedb_has_columns(data_dirname, day, fields))
+
+
+def filedb_has_all_columns(data_dirname: str, day: str, fields: list[str]):
+    return all(filedb_has_columns(data_dirname, day, fields))
+
+
+def filedb_merge(
+    data_dirname: str, day: str, df: pl.DataFrame, on="symbol", check_integrity=True
+):
+    """
+    Params:
+        - day: eg. "2025-09-08"
+    """
+    dest_file = _home_dir / data_dirname / f"{day}.parquet"
+    origin_df = pl.read_parquet(dest_file)
+    if origin_df.is_empty():
+        raise ValueError(f"Data in {dest_file} is empty")
+    dest_df = origin_df.join(df, on=on, how="left")
+    if check_integrity:
+        if len(dest_df) != len(df):
+            raise ValueError(
+                f"Cannot merge df to {dest_file} because of different size."
+            )
+    dest_df.write_parquet(dest_file)
