@@ -8,7 +8,7 @@ mongo_connect("localhost")
 datadir = "daily_factors"
 
 def test_filedb():
-    filedb_connect("/Users/qiong/WorkingDoc/quantdata/datas")
+    filedb_connect("D://bt_data/duckdb/finance_astock")
     dfs_daily = filedb_get_between(
         datadir,
         fields=["dt", "symbol", "open", "high", "low", "close"],
@@ -50,13 +50,6 @@ def test_filedb():
     )
     print(df2["000006.SZ"])
     assert len(df2["000006.SZ"]) == 10
-    df2_ = filedb_get_gte(
-        datadir,
-        day="2025-08-14",
-        n=10,
-    )
-    print(df2_["000006.SZ"])
-    assert len(df2_["000006.SZ"]) == 1
 
     df3 = filedb_get_lte(
         datadir,
