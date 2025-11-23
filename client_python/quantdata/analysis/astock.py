@@ -1,6 +1,7 @@
 from collections import defaultdict
+from typing import Union
 
-import pandas as pd
+import polars as pl
 import pytz
 
 from quantdata import get_data_df, get_data_last_row, mongo_get_data
@@ -42,7 +43,7 @@ def stat_market(pct):
                 perctg_gt_count += 1
         ratio_of_perctg_gt = perctg_gt_count / all_stock_number
         rows.append((dt, ratio_of_perctg_gt))
-    market_df = pd.DataFrame(rows, columns=["date", "ratio_of_perctg_gt"])
+    market_df = pl.DataFrame(rows, schema=["date", "ratio_of_perctg_gt"])
     market_df = market_df.sort_values(by="date")
     market_df = market_df.set_index(keys="date", drop=True)
     # print(market_df.info())
@@ -156,7 +157,7 @@ def ths_concepts_toprank_in_m_days(dt, top_n, m, logger):
             continue
         _df = _df.set_index("dt")
         data[symbol] = _df["pct_change"]
-    df = pd.DataFrame(data=data)
+    df = pl.DataFrame(data=data)
     top15in3M = set()
     for dt, row in df.iterrows():
         row = row.dropna()
@@ -172,7 +173,7 @@ def get_stocks_of_index(collection_name, index_symbol, dt):
     """
     获取截止{dt}时的概念或指数的成分股
     """
-    df = pd.DataFrame(
+    df = pl.DataFrame(
         mongo_get_data(
             dbname,
             collection_name,
@@ -180,12 +181,12 @@ def get_stocks_of_index(collection_name, index_symbol, dt):
         )
     )
     stocks = set()
-    for row in df.itertuples():
-        if row.op == 1:
-            stocks.add(row.stock_code)
+    for row in df.iter_rows(named=True):
+        if row["op"] == 1:
+            stocks.add(row["stock_code"])
         else:
             try:
-                stocks.remove(row.stock_code)
+                stocks.remove(row["stock_code"])
             except KeyError:
                 pass
     return list(stocks)
@@ -193,14 +194,14 @@ def get_stocks_of_index(collection_name, index_symbol, dt):
 
 def _get_indexes_of_stock(sub_df):
     indexes = set()
-    for row in sub_df.itertuples():
-        if row.op == 1:
-            if row.index_code in exclude_concept:
+    for row in sub_df.iter_rows(named=True):
+        if row["op"] == 1:
+            if row["index_code"] in exclude_concept:
                 continue
-            indexes.add(row.index_code)
+            indexes.add(row["stock_code"])
         else:
             try:
-                indexes.remove(row.index_code)
+                indexes.remove(row["stock_code"])
             except KeyError:
                 pass
     return list(indexes)
@@ -210,7 +211,7 @@ def get_indexes_of_stock(collection_name, symbol, dt):
     """
     获取截止{dt}时的股票所属的概念板块或指数
     """
-    df = pd.DataFrame(
+    df = pl.DataFrame(
         mongo_get_data(
             dbname,
             collection_name,
@@ -227,9 +228,9 @@ def include_in_ths_concepts(stock_list, dt, concept_codes, logger):
     if not stock_list or not concept_codes:
         return stock_list
     ret = []
-    df = pd.DataFrame(mongo_get_data(dbname, "constituent_ths_index"))
+    df = pl.DataFrame(mongo_get_data(dbname, "constituent_ths_index"))
     for stock in stock_list:
-        sub_df = df.loc[(df["tradedate"] <= dt) & (df["stock_code"] == stock)]
+        sub_df = df.filter((pl.col("tradedate") <= dt) & (pl.col("stock_code") == stock))
         concepts = _get_indexes_of_stock(sub_df)
         found = False
         for one_c in concepts:
@@ -246,10 +247,10 @@ def top_concepts_of_stocks(stock_list, dt, limit=None):
     """
     统计股票所属概念前{limit}名
     """
-    df = pd.DataFrame(mongo_get_data(dbname, "constituent_ths_index"))
+    df = pl.DataFrame(mongo_get_data(dbname, "constituent_ths_index"))
     concepts_count = defaultdict(int)
     for stock in stock_list:
-        sub_df = df.loc[(df["tradedate"] <= dt) & (df["stock_code"] == stock)]
+        sub_df = df.filter((pl.col("tradedate") <= dt) & (pl.col("stock_code") == stock))
         concepts = _get_indexes_of_stock(sub_df)
         for _c in concepts:
             concepts_count[_c] += 1
@@ -264,10 +265,10 @@ def get_indexes_of_stocks(stock_list, dt):
     """
     统计股票所属概念前{limit}名
     """
-    df = pd.DataFrame(mongo_get_data(dbname, "constituent_ths_index"))
+    df = pl.DataFrame(mongo_get_data(dbname, "constituent_ths_index"))
     all_concepts = {}
     for stock in stock_list:
-        sub_df = df.loc[(df["tradedate"] <= dt) & (df["stock_code"] == stock)]
+        sub_df = df.filter((pl.col("tradedate") <= dt) & (pl.col("stock_code") == stock))
         concepts = _get_indexes_of_stock(sub_df)
         all_concepts[stock] = concepts
     return all_concepts
@@ -277,40 +278,45 @@ def ths_hot_stocks(top_n, dt):
     """
     获取{dt}当天的同花顺热股前{top_n}名
     """
-    hot_stocks = pd.DataFrame(
+    hot_stocks = pl.DataFrame(
         mongo_get_data(dbname, "hot_stocks_ths", query={"date": dt})
     )
     hot_stocks = hot_stocks.nsmallest(top_n, "order", keep="first")
     return hot_stocks
 
 
-def get_finance_data(tablename, symbol, fields):
+def get_finance_data(tablename, fields) -> pl.DataFrame:
     projection = {
+        "_id": 0,
         "f_ann_date": 1,
         "end_date": 1,
     }
     for f in fields:
         projection[f] = 1
-    df = pd.DataFrame(
+    df = pl.DataFrame(
         mongo_get_data(
             dbname,
             tablename,
-            query={"ts_code": symbol},
+            query={},
             projection=projection,
-            sort_by=[("f_ann_date", 1), ("end_date", 1)],
         )
     )
-    if df.empty:
+    if df.is_empty():
         return df
     # drop duplicates of finance_data
-    df["last_end_date"] = df["end_date"].shift(1, fill_value=df["end_date"].iloc[0])
-    df = df.loc[df["end_date"] >= df["last_end_date"]]
-    df = df.drop(columns=["last_end_date"])
-    df.reset_index(drop=True, inplace=True)
+    df = df.with_columns(pl.col("f_ann_date").cast(pl.Datetime("ms")), pl.col("end_date").cast(pl.Datetime("ms")))
+    df = df.sort(["ts_code", "f_ann_date", "end_date"], maintain_order=True)
+    df = df.filter(
+        (pl.col("ts_code") != pl.col("ts_code").shift(1))
+        | (
+            pl.col("end_date")
+            >= pl.col("end_date").shift(1, fill_value=pl.datetime(1990, 1, 1))
+        )
+    )
     return df
 
 
-def merge_finance_data(*data):
+def merge_finance_data(*data) -> Union[pl.DataFrame, None]:
     l = len(data)
     if l < 1:
         return None
@@ -321,18 +327,11 @@ def merge_finance_data(*data):
         right = merge_finance_data(*data[1:])
         if (
             left is not None
-            and not left.empty
+            and not left.is_empty()
             and right is not None
-            and not right.empty
+            and not right.is_empty()
         ):
-            df = pd.merge_ordered(left, right, on=["f_ann_date", "end_date"])
-            df.reset_index(drop=True, inplace=True)
-            return df
+            df = left.join(right, on=["ts_code", "f_ann_date", "end_date"], how="full", coalesce=True)
+            return df.sort(["ts_code", "f_ann_date", "end_date"], maintain_order=True)
         else:
             return None
-
-
-def expand_finance_data_to_daily(daily_df, fdata: pd.DataFrame, fields):
-    idxs = fdata["f_ann_date"].searchsorted(daily_df.index, side="right") - 1
-    for col in fields:
-        daily_df[col] = list(map(fdata[col].get, idxs))

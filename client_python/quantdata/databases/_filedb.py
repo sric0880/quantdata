@@ -1,6 +1,7 @@
 import os
 from datetime import date
 from pathlib import Path
+from typing import Dict, Union
 
 import polars as pl
 
@@ -12,6 +13,10 @@ _home_dir: Path = None
 def filedb_connect(home_dir: str):
     global _home_dir
     _home_dir = Path(home_dir)
+
+
+def filedb_get_parquet(filepath: str, fields: list[str] = None):
+    return pl.read_parquet(_home_dir / filepath, columns=fields)
 
 
 def filedb_get_at(
@@ -94,7 +99,7 @@ def filedb_get_between(
     adj_factor_mongo_params: tuple = None,
     groupby_sybmol=True,
     groupby_freq: str = None,
-) -> pl.DataFrame:
+):
     """
     Params:
         - fields: 至少要含有["dt", "symbol"]，如果要复权，还应该包括["open", "high", "low", "close"]
@@ -129,7 +134,7 @@ def _filedb_get(
     adj_factor_mongo_params: tuple = None,
     groupby_sybmol=True,
     groupby_freq: str = None,
-) -> pl.DataFrame:
+) -> Union[pl.DataFrame, Dict[str, pl.DataFrame]]:
     if not sorted_files:
         raise ValueError(f"Empty file list")
     if groupby_freq and not groupby_sybmol:
@@ -137,9 +142,15 @@ def _filedb_get(
             f"groupby_freq is {groupby_freq}, param groupby_sybmol must be True"
         )
     start_date, end_date = sorted_files[0][0], sorted_files[-1][0]
-    df = pl.read_parquet(
-        [_home_dir / data_dirname / f[1] for f in sorted_files], columns=fields
+    df = pl.scan_parquet(
+        [_home_dir / data_dirname / f[1] for f in sorted_files],
+        cache=False,
+        extra_columns="ignore",
+        missing_columns="insert",
     )
+    if fields is not None:
+        df = df.select(fields)
+    df = df.collect()
     if adj_factor_mongo_params:
         db_name, coll_name = adj_factor_mongo_params
         df = apply_adjust_factors(df, db_name, coll_name, start_date, end_date)
@@ -253,16 +264,29 @@ def filedb_has_all_columns(data_dirname: str, day: str, fields: list[str]):
 
 
 def filedb_merge(
-    data_dirname: str, day: str, df: pl.DataFrame, on="symbol", check_integrity=True
+    data_dirname: str,
+    day: str,
+    df: pl.DataFrame,
+    on="symbol",
+    check_integrity=True,
+    replace_origin=False,
 ):
     """
     Params:
         - day: eg. "2025-09-08"
+        - check_integrity: ensure origin and df have the same length
+        - replace_origin: replace the same columns in both origin and df
     """
     dest_file = _home_dir / data_dirname / f"{day}.parquet"
     origin_df = pl.read_parquet(dest_file)
     if origin_df.is_empty():
-        raise ValueError(f"Data in {dest_file} is empty")
+        raise ValueError(f"{dest_file} is empty")
+    same_cols = set(origin_df.columns) & set(df.columns)
+    same_cols -= {"symbol"}
+    if replace_origin:
+        origin_df = origin_df.drop(same_cols)
+    elif same_cols:
+        df = df.drop(same_cols)
     dest_df = origin_df.join(df, on=on, how="left")
     if check_integrity:
         if len(dest_df) != len(df):
