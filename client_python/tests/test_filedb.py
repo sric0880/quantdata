@@ -1,45 +1,43 @@
 import pytest
 from quantdata.databases._filedb import *
-from quantdata.databases._mongodb import *
 
-
-mongo_connect("localhost")
 
 datadir = "daily_factors"
+
 
 def test_filedb():
     filedb_connect("D://bt_data/duckdb/finance_astock")
     dfs_daily = filedb_get_between(
         datadir,
-        fields=["dt", "symbol", "open", "high", "low", "close"],
+        fields=["dt", "symbol", "open", "high", "low", "close", "preclose"],
         start_date="2025-04-30",
         end_date="2025-08-14",
-        adj_factor_mongo_params=("finance", "adjust_factors"),
+        adj=True,
     )
     with pytest.raises(ValueError):
         filedb_get_between(
             datadir,
-            fields=["dt", "symbol", "open", "high", "low", "close"],
+            fields=["dt", "symbol", "open", "high", "low", "close", "preclose"],
             start_date="2025-08-16",
             end_date="2025-08-14",
-            adj_factor_mongo_params=("finance", "adjust_factors"),
+            adj=True,
         )
 
     df = filedb_get_between(
         datadir,
-        fields=["dt", "symbol", "open", "high", "low", "close"],
+        fields=["dt", "symbol", "open", "high", "low", "close", "preclose"],
         start_date="2025-08-14",
         end_date="2025-08-14",
-        adj_factor_mongo_params=("finance", "adjust_factors"),
+        adj=True,
         groupby_sybmol=False,
     )
     assert df.select(pl.col("dt").unique().len()).item() == 1
 
     df1 = filedb_get_at(
         datadir,
-        fields=["dt", "symbol", "open", "high", "low", "close"],
+        fields=["dt", "symbol", "open", "high", "low", "close", "preclose"],
         day="2025-08-14",
-        adj_factor_mongo_params=("finance", "adjust_factors"),
+        adj=True,
     )
     assert df.equals(df1)
 
@@ -59,16 +57,20 @@ def test_filedb():
     print(df3["000006.SZ"])
     assert len(df3["000006.SZ"]) == 10
 
-    assert not filedb_has_all_columns("daily_factors", "2025-08-14", ["name", "open", "non"])
-    assert not filedb_has_any_columns("daily_factors", "2025-08-14", ["abc", "non", "foo"])
+    assert not filedb_has_all_columns(
+        "daily_factors", "2025-08-14", ["name", "open", "non"]
+    )
+    assert not filedb_has_any_columns(
+        "daily_factors", "2025-08-14", ["abc", "non", "foo"]
+    )
 
     df_mon = filedb_get_between(
         "daily_factors",
-        fields=["dt", "symbol", "open", "high", "low", "close", "volume", "amount"],
+        fields=["dt", "symbol", "open", "high", "low", "close", "preclose", "volume", "amount"],
         start_date="2025-04-30",
         end_date="2025-08-14",
-        adj_factor_mongo_params=("finance", "adjust_factors"),
-        groupby_freq = "1mo"
+        adj=True,
+        groupby_freq="1mo",
     )["000001.SZ"]
     assert 5 == len(df_mon)
     assert dfs_daily["000001.SZ"]["adj_open"][0] == df_mon["adj_open"][0]
@@ -76,11 +78,11 @@ def test_filedb():
 
     df_w = filedb_get_between(
         "daily_factors",
-        fields=["dt", "symbol", "open", "high", "low", "close", "volume", "amount"],
+        fields=["dt", "symbol", "open", "high", "low", "close", "preclose", "volume", "amount"],
         start_date="2025-04-30",
         end_date="2025-08-14",
-        adj_factor_mongo_params=("finance", "adjust_factors"),
-        groupby_freq = "1w"
+        adj=True,
+        groupby_freq="1w",
     )["000001.SZ"]
     assert 16 == len(df_w)
     assert dfs_daily["000001.SZ"]["adj_open"][0] == df_w["adj_open"][0]

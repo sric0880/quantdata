@@ -1,11 +1,8 @@
 import os
-from datetime import date
 from pathlib import Path
 from typing import Dict, Union
 
 import polars as pl
-
-from ._mongodb import get_conn_mongodb
 
 _home_dir: Path = None
 
@@ -23,7 +20,7 @@ def filedb_get_at(
     data_dirname: str,
     fields: list[str] = None,
     day: str = 0,
-    adj_factor_mongo_params: tuple = None,
+    adj=False,
 ):
     """
     Params:
@@ -35,7 +32,7 @@ def filedb_get_at(
         fields,
         day,
         day,
-        adj_factor_mongo_params,
+        adj,
         False,
     )
 
@@ -45,7 +42,7 @@ def filedb_get_gte(
     fields: list[str] = None,
     day: str = 0,
     n: int = 1,
-    adj_factor_mongo_params: tuple = None,
+    adj=False,
     groupby_sybmol=True,
     groupby_freq: str = None,
 ):
@@ -60,7 +57,7 @@ def filedb_get_gte(
         data_dirname,
         valid_file_list,
         fields,
-        adj_factor_mongo_params,
+        adj,
         groupby_sybmol,
         groupby_freq,
     )
@@ -71,7 +68,7 @@ def filedb_get_lte(
     fields: list[str] = None,
     day: str = 0,
     n: int = 1,
-    adj_factor_mongo_params: tuple = None,
+    adj=False,
     groupby_sybmol=True,
     groupby_freq: str = None,
 ):
@@ -85,7 +82,7 @@ def filedb_get_lte(
         data_dirname,
         valid_file_list,
         fields,
-        adj_factor_mongo_params,
+        adj,
         groupby_sybmol,
         groupby_freq,
     )
@@ -96,7 +93,7 @@ def filedb_get_between(
     fields: list[str] = None,
     start_date: str = 0,
     end_date: str = 0,
-    adj_factor_mongo_params: tuple = None,
+    adj=False,
     groupby_sybmol=True,
     groupby_freq: str = None,
 ):
@@ -110,7 +107,7 @@ def filedb_get_between(
         data_dirname,
         valid_file_list,
         fields,
-        adj_factor_mongo_params,
+        adj,
         groupby_sybmol,
         groupby_freq,
     )
@@ -131,7 +128,7 @@ def _filedb_get(
     data_dirname: str,
     sorted_files: list[str],
     fields: list[str] = None,
-    adj_factor_mongo_params: tuple = None,
+    adj=False,
     groupby_sybmol=True,
     groupby_freq: str = None,
 ) -> Union[pl.DataFrame, Dict[str, pl.DataFrame]]:
@@ -141,7 +138,12 @@ def _filedb_get(
         raise ValueError(
             f"groupby_freq is {groupby_freq}, param groupby_sybmol must be True"
         )
-    start_date, end_date = sorted_files[0][0], sorted_files[-1][0]
+    if adj and (
+        "close" not in fields or "preclose" not in fields or "symbol" not in fields
+    ):
+        raise ValueError(
+            "fields must contain ['close', 'preclose', 'symbol'] to calculate adjust prices"
+        )
     df = pl.scan_parquet(
         [_home_dir / data_dirname / f[1] for f in sorted_files],
         cache=False,
@@ -151,9 +153,8 @@ def _filedb_get(
     if fields is not None:
         df = df.select(fields)
     df = df.collect()
-    if adj_factor_mongo_params:
-        db_name, coll_name = adj_factor_mongo_params
-        df = apply_adjust_factors(df, db_name, coll_name, start_date, end_date)
+    if adj:
+        df = apply_adjust_factors(df)
     if not groupby_sybmol:
         return df
     elif groupby_freq:
@@ -194,54 +195,20 @@ def _get_valid_file_list_after(data_path: str, begin_date: str, days: int):
     return ret[: min(days, len(ret))]
 
 
-def fetch_adjust_factors(db_name, coll_name, start_date, end_date) -> pl.DataFrame:
-    """
-    Fetch adjust factors from mongodb that is between [start_date, end_date]
-    """
-    conn = get_conn_mongodb()
-    if conn is None:
-        raise RuntimeError("Init mongodb first")
-    adjust_factors_collection = conn[db_name][coll_name]
-    adjs = adjust_factors_collection.find({})
-    adj_df = pl.DataFrame(adjs)
-    if adj_df.is_empty():
-        raise RuntimeError("Mongodb has no adjust factors")
-    adj_df = adj_df.rename(mapping={"tradedate": "dt"}).drop("_id")
-    adj_df = adj_df.with_columns(pl.col("dt").cast(pl.Datetime("ms"))).select(
-        ["dt", "symbol", "adjust_factor"]
-    )
-    _start_dt = date.fromisoformat(start_date)
-    _end_dt = date.fromisoformat(end_date)
-    sub_df = pl.DataFrame(
-        {"dt": pl.date_range(_start_dt, _end_dt, interval="1d", eager=True)},
-        schema=[("dt", pl.Datetime("ms"))],
-    )
-    sub_df = sub_df.with_columns(
-        adjust_factor=1.0,
-        symbol=pl.lit("_temp"),
-    ).select(["dt", "symbol", "adjust_factor"])
-    # 列与列之间要对齐，否则报错
-    adj_df = pl.concat([adj_df, sub_df])
-    adj_df = adj_df.sort("dt")
-    piv_df = adj_df.pivot("symbol", index="dt", values="adjust_factor").fill_null(
-        strategy="forward"
-    )
-    piv_df = piv_df.filter(pl.col("dt").is_between(_start_dt, _end_dt))
-    return piv_df
-
-
-def apply_adjust_factors(daily_df, db_name, coll_name, start_date, end_date):
-    a = fetch_adjust_factors(db_name, coll_name, start_date, end_date)
-    a = a.unpivot(index="dt", variable_name="symbol", value_name="adjust_factor")
-    return (
-        daily_df.join(a, on=["dt", "symbol"], how="left")
-        .with_columns(pl.col("adjust_factor").fill_null(1.0))
-        .with_columns(
-            adj_open=pl.col("open") * pl.col("adjust_factor"),
-            adj_high=pl.col("high") * pl.col("adjust_factor"),
-            adj_low=pl.col("low") * pl.col("adjust_factor"),
-            adj_close=pl.col("close") * pl.col("adjust_factor"),
-        )
+def apply_adjust_factors(df: pl.DataFrame):
+    ohlc_col_nms = ["open", "high", "low", "close"]
+    return df.with_columns(
+        adjust_factor=(
+            (pl.col("preclose") / pl.col("close").shift(1))
+            .cum_prod(reverse=True)
+            .shift(-1, fill_value=1.0)
+        ).over("symbol")
+    ).with_columns(
+        [
+            (pl.col(col_nm) * pl.col("adjust_factor")).alias("adj_" + col_nm)
+            for col_nm in ohlc_col_nms
+            if col_nm in df.columns
+        ]
     )
 
 
