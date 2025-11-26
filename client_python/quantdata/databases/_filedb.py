@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from typing import Dict, Union
+from datetime import datetime, date
 
 import polars as pl
 
@@ -24,7 +25,7 @@ def filedb_get_at(
 ):
     """
     Params:
-        - fields: 至少要含有["dt", "symbol"]，如果要复权，还应该包括["open", "high", "low", "close"]
+        - fields: 至少要含有["dt", "symbol"]，如果要复权，还应该包括["close", "preclose"]
         - day: eg. "2025-09-08"
     """
     return filedb_get_between(
@@ -48,13 +49,12 @@ def filedb_get_gte(
 ):
     """
     Params:
-        - fields: 至少要含有["dt", "symbol"]，如果要复权，还应该包括["open", "high", "low", "close"]
+        - fields: 至少要含有["dt", "symbol"]，如果要复权，还应该包括["close", "preclose"]
         - day: eg. "2025-09-08"
         - groupby_freq: "1w" for week, "1mo" for month, and default None is for daily. 需要复权数据
     """
     valid_file_list = _get_valid_file_list_after(data_dirname, day, n)
     return _filedb_get(
-        data_dirname,
         valid_file_list,
         fields,
         adj,
@@ -74,12 +74,11 @@ def filedb_get_lte(
 ):
     """
     Params:
-        - fields: 至少要含有["dt", "symbol"]，如果要复权，还应该包括["open", "high", "low", "close"]
+        - fields: 至少要含有["dt", "symbol"]，如果要复权，还应该包括["close", "preclose"]
         - groupby_freq: "1w" for week, "1mo" for month, and default None is for daily. 需要复权数据
     """
     valid_file_list = _get_valid_file_list_before(data_dirname, day, n)
     return _filedb_get(
-        data_dirname,
         valid_file_list,
         fields,
         adj,
@@ -99,12 +98,11 @@ def filedb_get_between(
 ):
     """
     Params:
-        - fields: 至少要含有["dt", "symbol"]，如果要复权，还应该包括["open", "high", "low", "close"]
+        - fields: 至少要含有["dt", "symbol"]，如果要复权，还应该包括["close", "preclose"]
         - groupby_freq: "1w" for week, "1mo" for month, and default None is for daily. 需要复权数据
     """
     valid_file_list = _get_valid_file_list(data_dirname, start_date, end_date)
     return _filedb_get(
-        data_dirname,
         valid_file_list,
         fields,
         adj,
@@ -124,8 +122,34 @@ def filedb_groupby_freq(df: pl.DataFrame, groupby_freq: str):
     )
 
 
-def _filedb_get(
+def filedb_get(
     data_dirname: str,
+    sorted_dates: list[Union[datetime, date, str]],
+    fields: list[str] = None,
+    adj=False,
+    groupby_sybmol=True,
+    groupby_freq: str = None,
+):
+    if not sorted_dates:
+        return None
+    if isinstance(sorted_dates[0], (datetime, date)):
+        sorted_files = [
+            _home_dir / data_dirname / f"{d.isoformat()}.parquet" for d in sorted_dates
+        ]
+    elif isinstance(sorted_dates[0], str):
+        sorted_files = [_home_dir / data_dirname / f"{d}.parquet" for d in sorted_dates]
+    else:
+        return None
+    return _filedb_get(
+        sorted_files,
+        fields,
+        adj,
+        groupby_sybmol,
+        groupby_freq,
+    )
+
+
+def _filedb_get(
     sorted_files: list[str],
     fields: list[str] = None,
     adj=False,
@@ -145,7 +169,7 @@ def _filedb_get(
             "fields must contain ['close', 'preclose', 'symbol'] to calculate adjust prices"
         )
     df = pl.scan_parquet(
-        [_home_dir / data_dirname / f[1] for f in sorted_files],
+        sorted_files,
         cache=False,
         extra_columns="ignore",
         missing_columns="insert",
@@ -168,30 +192,33 @@ def _filedb_get(
 
 def _get_valid_file_list(data_path: str, start_date: str, end_date: str):
     ret = []
-    for fname in os.listdir(_home_dir / data_path):
+    p = _home_dir / data_path
+    for fname in os.listdir(p):
         f_date = fname[:10]
         if f_date >= start_date and f_date <= end_date:
-            ret.append((f_date, fname))
-    return sorted(ret, key=lambda x: x[0])
+            ret.append(p / fname)
+    return sorted(ret)
 
 
 def _get_valid_file_list_before(data_path: str, end_date: str, days: int):
     ret = []
-    for fname in os.listdir(_home_dir / data_path):
+    p = _home_dir / data_path
+    for fname in os.listdir(p):
         f_date = fname[:10]
         if f_date <= end_date:
-            ret.append((f_date, fname))
-    ret = sorted(ret, key=lambda x: x[0])
+            ret.append(p / fname)
+    ret = sorted(ret)
     return ret[max(0, len(ret) - days) :]
 
 
 def _get_valid_file_list_after(data_path: str, begin_date: str, days: int):
     ret = []
-    for fname in os.listdir(_home_dir / data_path):
+    p = _home_dir / data_path
+    for fname in os.listdir(p):
         f_date = fname[:10]
         if f_date >= begin_date:
-            ret.append((f_date, fname))
-    ret = sorted(ret, key=lambda x: x[0])
+            ret.append(p / fname)
+    ret = sorted(ret)
     return ret[: min(days, len(ret))]
 
 
