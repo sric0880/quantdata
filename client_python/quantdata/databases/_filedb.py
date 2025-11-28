@@ -156,16 +156,12 @@ def filedb_get(
 ):
     if not sorted_dates:
         return None
-    if isinstance(sorted_dates[0], (datetime, date)):
-        sorted_files = [
-            _home_dir / data_dirname / f"{d.isoformat()}.parquet" for d in sorted_dates
-        ]
-    elif isinstance(sorted_dates[0], str):
-        sorted_files = [_home_dir / data_dirname / f"{d}.parquet" for d in sorted_dates]
-    else:
-        return None
+    if isinstance(sorted_dates[0], datetime):
+        sorted_dates = [d.date().isoformat() for d in sorted_dates]
+    elif isinstance(sorted_dates[0], date):
+        sorted_dates = [d.isoformat() for d in sorted_dates]
     return _filedb_get(
-        sorted_files,
+        [_home_dir / data_dirname / f"{d}.parquet" for d in sorted_dates],
         fields,
         adj,
         groupby_sybmol,
