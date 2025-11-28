@@ -73,8 +73,8 @@ def test_filedb():
     )["000001.SZ"]
     print(df_mon)
     assert 5 == len(df_mon)
-    assert dfs_daily["000001.SZ"]["adj_open"][0] == df_mon["adj_open"][0]
-    assert dfs_daily["000001.SZ"]["adj_close"][-1] == df_mon["adj_close"][-1]
+    assert dfs_daily["000001.SZ"]["adj_open"][0] == df_mon["open_1mo"][0]
+    assert dfs_daily["000001.SZ"]["adj_close"][-1] == df_mon["close_1mo"][-1]
 
     df_w = filedb_groupby_freq(
         "daily_factors",
@@ -85,5 +85,9 @@ def test_filedb():
     )["000001.SZ"]
     print(df_w)
     assert 16 == len(df_w)
-    assert dfs_daily["000001.SZ"]["adj_open"][0] == df_w["adj_open"][0]
-    assert dfs_daily["000001.SZ"]["adj_close"][-1] == df_w["adj_close"][-1]
+    assert dfs_daily["000001.SZ"]["adj_open"][0] == df_w["open_1w"][0]
+    assert dfs_daily["000001.SZ"]["adj_close"][-1] == df_w["close_1w"][-1]
+
+
+if __name__ == "__main__":
+    test_filedb()

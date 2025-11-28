@@ -134,12 +134,12 @@ def filedb_groupby_freq(
         False,
     )
     df = df.group_by(pl.col("symbol"), pl.col("dt").dt.truncate(freq)).agg(
-        pl.col("adj_open").first(),
-        pl.col("adj_high").max(),
-        pl.col("adj_low").min(),
-        pl.col("adj_close").last(),
-        pl.col("volume").sum(),
-        pl.col("amount").sum(),
+        pl.col("adj_open").first().alias(f"open_{freq}"),
+        pl.col("adj_high").max().alias(f"high_{freq}"),
+        pl.col("adj_low").min().alias(f"low_{freq}"),
+        pl.col("adj_close").last().alias(f"close_{freq}"),
+        pl.col("volume").sum().alias(f"volume_{freq}"),
+        pl.col("amount").sum().alias(f"amount_{freq}"),
     )
     df = df.sort("symbol", "dt")
     if groupby_sybmol:
