@@ -19,8 +19,8 @@ def filedb_get_parquet(filepath: str, fields: list[str] = None):
 
 def filedb_get_at(
     data_dirname: str,
+    day: str,
     fields: list[str] = None,
-    day: str = 0,
     adj=False,
 ):
     """
@@ -30,9 +30,9 @@ def filedb_get_at(
     """
     return filedb_get_between(
         data_dirname,
+        day,
+        day,
         fields,
-        day,
-        day,
         adj,
         False,
     )
@@ -40,18 +40,16 @@ def filedb_get_at(
 
 def filedb_get_gte(
     data_dirname: str,
+    day: str,
     fields: list[str] = None,
-    day: str = 0,
     n: int = 1,
     adj=False,
     groupby_sybmol=True,
-    groupby_freq: str = None,
 ):
     """
     Params:
         - fields: 至少要含有["dt", "symbol"]，如果要复权，还应该包括["close", "preclose"]
         - day: eg. "2025-09-08"
-        - groupby_freq: "1w" for week, "1mo" for month, and default None is for daily. 需要复权数据
     """
     valid_file_list = _get_valid_file_list_after(data_dirname, day, n)
     return _filedb_get(
@@ -59,23 +57,20 @@ def filedb_get_gte(
         fields,
         adj,
         groupby_sybmol,
-        groupby_freq,
     )
 
 
 def filedb_get_lte(
     data_dirname: str,
+    day: str,
     fields: list[str] = None,
-    day: str = 0,
     n: int = 1,
     adj=False,
     groupby_sybmol=True,
-    groupby_freq: str = None,
 ):
     """
     Params:
         - fields: 至少要含有["dt", "symbol"]，如果要复权，还应该包括["close", "preclose"]
-        - groupby_freq: "1w" for week, "1mo" for month, and default None is for daily. 需要复权数据
     """
     valid_file_list = _get_valid_file_list_before(data_dirname, day, n)
     return _filedb_get(
@@ -83,23 +78,20 @@ def filedb_get_lte(
         fields,
         adj,
         groupby_sybmol,
-        groupby_freq,
     )
 
 
 def filedb_get_between(
     data_dirname: str,
+    start_date: str,
+    end_date: str,
     fields: list[str] = None,
-    start_date: str = 0,
-    end_date: str = 0,
     adj=False,
     groupby_sybmol=True,
-    groupby_freq: str = None,
 ):
     """
     Params:
         - fields: 至少要含有["dt", "symbol"]，如果要复权，还应该包括["close", "preclose"]
-        - groupby_freq: "1w" for week, "1mo" for month, and default None is for daily. 需要复权数据
     """
     valid_file_list = _get_valid_file_list(data_dirname, start_date, end_date)
     return _filedb_get(
@@ -107,12 +99,41 @@ def filedb_get_between(
         fields,
         adj,
         groupby_sybmol,
-        groupby_freq,
     )
 
 
-def filedb_groupby_freq(df: pl.DataFrame, groupby_freq: str):
-    return df.group_by(pl.col("dt").dt.truncate(groupby_freq), maintain_order=True).agg(
+def filedb_groupby_freq(
+    data_dirname: str,
+    start_date: str,
+    end_date: str,
+    freq: str,
+    groupby_sybmol=False,
+):
+    """
+    生成周线和月线，字段必须含有[ "dt", "symbol", "open", "high", "low", "close", "preclose", "volume", "amount"]
+
+    Params:
+        - freq: "1w" for week, "1mo" for month
+    """
+    df = filedb_get_between(
+        data_dirname,
+        start_date,
+        end_date,
+        [
+            "dt",
+            "symbol",
+            "open",
+            "high",
+            "low",
+            "close",
+            "preclose",
+            "volume",
+            "amount",
+        ],
+        True,
+        False,
+    )
+    df = df.group_by(pl.col("symbol"), pl.col("dt").dt.truncate(freq)).agg(
         pl.col("adj_open").first(),
         pl.col("adj_high").max(),
         pl.col("adj_low").min(),
@@ -120,6 +141,10 @@ def filedb_groupby_freq(df: pl.DataFrame, groupby_freq: str):
         pl.col("volume").sum(),
         pl.col("amount").sum(),
     )
+    df = df.sort("symbol", "dt")
+    if groupby_sybmol:
+        return {symbol: sd for (symbol,), sd in df.group_by(by="symbol")}
+    return df
 
 
 def filedb_get(
@@ -128,7 +153,6 @@ def filedb_get(
     fields: list[str] = None,
     adj=False,
     groupby_sybmol=True,
-    groupby_freq: str = None,
 ):
     if not sorted_dates:
         return None
@@ -145,7 +169,6 @@ def filedb_get(
         fields,
         adj,
         groupby_sybmol,
-        groupby_freq,
     )
 
 
@@ -154,14 +177,9 @@ def _filedb_get(
     fields: list[str] = None,
     adj=False,
     groupby_sybmol=True,
-    groupby_freq: str = None,
 ) -> Union[pl.DataFrame, Dict[str, pl.DataFrame]]:
     if not sorted_files:
         raise ValueError(f"Empty file list")
-    if groupby_freq and not groupby_sybmol:
-        raise ValueError(
-            f"groupby_freq is {groupby_freq}, param groupby_sybmol must be True"
-        )
     if adj and (
         "close" not in fields or "preclose" not in fields or "symbol" not in fields
     ):
@@ -179,15 +197,9 @@ def _filedb_get(
     df = df.collect()
     if adj:
         df = apply_adjust_factors(df)
-    if not groupby_sybmol:
-        return df
-    elif groupby_freq:
-        return {
-            symbol: filedb_groupby_freq(sd, groupby_freq)
-            for (symbol,), sd in df.group_by(by="symbol")
-        }
-    else:
+    if groupby_sybmol:
         return {symbol: sd for (symbol,), sd in df.group_by(by="symbol")}
+    return df
 
 
 def _get_valid_file_list(data_path: str, start_date: str, end_date: str):

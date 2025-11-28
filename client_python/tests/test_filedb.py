@@ -9,25 +9,25 @@ def test_filedb():
     filedb_connect("D://bt_data/duckdb/finance_astock")
     dfs_daily = filedb_get_between(
         datadir,
+        "2025-04-30",
+        "2025-08-14",
         fields=["dt", "symbol", "open", "high", "low", "close", "preclose"],
-        start_date="2025-04-30",
-        end_date="2025-08-14",
         adj=True,
     )
     with pytest.raises(ValueError):
         filedb_get_between(
             datadir,
+            "2025-08-16",
+            "2025-08-14",
             fields=["dt", "symbol", "open", "high", "low", "close", "preclose"],
-            start_date="2025-08-16",
-            end_date="2025-08-14",
             adj=True,
         )
 
     df = filedb_get_between(
         datadir,
+        "2025-08-14",
+        "2025-08-14",
         fields=["dt", "symbol", "open", "high", "low", "close", "preclose"],
-        start_date="2025-08-14",
-        end_date="2025-08-14",
         adj=True,
         groupby_sybmol=False,
     )
@@ -35,15 +35,15 @@ def test_filedb():
 
     df1 = filedb_get_at(
         datadir,
+        "2025-08-14",
         fields=["dt", "symbol", "open", "high", "low", "close", "preclose"],
-        day="2025-08-14",
         adj=True,
     )
     assert df.equals(df1)
 
     df2 = filedb_get_gte(
         datadir,
-        day="2025-07-14",
+        "2025-07-14",
         n=10,
     )
     print(df2["000006.SZ"])
@@ -51,7 +51,7 @@ def test_filedb():
 
     df3 = filedb_get_lte(
         datadir,
-        day="2025-08-14",
+        "2025-08-14",
         n=10,
     )
     print(df3["000006.SZ"])
@@ -64,26 +64,26 @@ def test_filedb():
         "daily_factors", "2025-08-14", ["abc", "non", "foo"]
     )
 
-    df_mon = filedb_get_between(
+    df_mon = filedb_groupby_freq(
         "daily_factors",
-        fields=["dt", "symbol", "open", "high", "low", "close", "preclose", "volume", "amount"],
-        start_date="2025-04-30",
-        end_date="2025-08-14",
-        adj=True,
-        groupby_freq="1mo",
+        "2025-04-30",
+        "2025-08-14",
+        "1mo",
+        groupby_sybmol=True
     )["000001.SZ"]
+    print(df_mon)
     assert 5 == len(df_mon)
     assert dfs_daily["000001.SZ"]["adj_open"][0] == df_mon["adj_open"][0]
     assert dfs_daily["000001.SZ"]["adj_close"][-1] == df_mon["adj_close"][-1]
 
-    df_w = filedb_get_between(
+    df_w = filedb_groupby_freq(
         "daily_factors",
-        fields=["dt", "symbol", "open", "high", "low", "close", "preclose", "volume", "amount"],
-        start_date="2025-04-30",
-        end_date="2025-08-14",
-        adj=True,
-        groupby_freq="1w",
+        "2025-04-30",
+        "2025-08-14",
+        "1w",
+        groupby_sybmol=True
     )["000001.SZ"]
+    print(df_w)
     assert 16 == len(df_w)
     assert dfs_daily["000001.SZ"]["adj_open"][0] == df_w["adj_open"][0]
     assert dfs_daily["000001.SZ"]["adj_close"][-1] == df_w["adj_close"][-1]
