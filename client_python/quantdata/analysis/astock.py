@@ -2,52 +2,10 @@ from collections import defaultdict
 from typing import Union
 
 import polars as pl
-import pytz
 
-from quantdata import get_data_df, get_data_last_row, mongo_get_data
+from quantdata import mongo_get_data
 
 dbname = "finance"
-
-
-def stat_market(pct):
-    """
-    统计全市场涨幅超{pct}的股票的比例
-    """
-    all_market_perctgs = defaultdict(list)
-    all_stocks = mongo_get_data(dbname, "basic_info_stocks")
-    for stock in all_stocks:
-        symbol = stock["symbol"]
-        # print(symbol)
-        daily_df = get_data_df(
-            "finance",
-            f"bars_daily_{symbol.replace('.', '_')}",
-            ["dt", "name", "close", "preclose"],
-        )
-        if daily_df is None:
-            continue
-        # print(daily_df)
-        for row in daily_df.itertuples():
-            stock_name = row.name
-            if "ST" in stock_name or "退" in stock_name:
-                continue
-            perctg = (row.close - row.preclose) / row.preclose
-            all_market_perctgs[row.dt].append(perctg)
-
-    # 全市场统计汇总
-    rows = []
-    for dt, perctgs_list in all_market_perctgs.items():
-        all_stock_number = len(perctgs_list)
-        perctg_gt_count = 0
-        for perctg in perctgs_list:
-            if perctg > pct:
-                perctg_gt_count += 1
-        ratio_of_perctg_gt = perctg_gt_count / all_stock_number
-        rows.append((dt, ratio_of_perctg_gt))
-    market_df = pl.DataFrame(rows, schema=["date", "ratio_of_perctg_gt"])
-    market_df = market_df.sort_values(by="date")
-    market_df = market_df.set_index(keys="date", drop=True)
-    # print(market_df.info())
-    return market_df
 
 
 # 要排除的概率
@@ -94,81 +52,6 @@ def get_ths_concepts_names():
     return {doc["symbol"]: doc["name"] for doc in index_list}
 
 
-def stat_ths_concepts(days, n, m, logger):
-    """
-    统计同花顺概念板块前{n}日涨停股重复最多的{m}个概念
-    """
-    all_stocks = mongo_get_data(dbname, "basic_info_stocks")
-    start_dt = days[0]
-    end_dt = days[-1]
-    maxup_stock_lists = defaultdict(list)
-    for stock in all_stocks:
-        symbol = stock["symbol"]
-        # print(symbol)
-        daily_df = get_data_df(
-            "finance",
-            f"bars_daily_{symbol.replace('.', '_')}",
-            ["dt", "maxupordown"],
-            start_dt=start_dt - pd.Timedelta(20, unit="D"),
-            till_dt=end_dt,
-        )
-        if daily_df is None or daily_df.empty:
-            continue
-        daily_df["maxup_10"] = daily_df["maxupordown"].rolling(10).max()
-        daily_df = daily_df[daily_df["maxup_10"] > 0]
-        # print(daily_df)
-        for dt in daily_df["dt"]:
-            maxup_stock_lists[dt].append(symbol)
-        # print(maxup_stock_lists)
-
-    ret = {}
-    for dt in days:
-        stock_list = maxup_stock_lists[dt]
-        if stock_list:
-            top_cs = top_concepts_of_stocks(stock_list, dt, limit=m)
-            ret[dt.isoformat()] = top_cs
-    return ret
-
-
-def ths_concepts_toprank_in_m_days(dt, top_n, m, logger):
-    """
-    {m}个交易日内有上过涨幅榜前{top_n}的板块
-    """
-    index_list = mongo_get_data(
-        dbname, "basic_info_ths_concepts", projection={"symbol": 1}
-    )
-    data = {}
-    dt = pytz.utc.localize(dt)
-    for row in index_list:
-        symbol = row["symbol"]
-        if symbol in exclude_concept:
-            continue
-        _df = get_data_last_row(
-            "finance",
-            f"bars_ths_index_daily_{symbol.replace('.', '_')}",
-            ["dt", "pct_change"],
-            till_dt=dt,
-            N=m,
-        ).df()
-        if _df is None:
-            logger.error(f"同花顺指数{symbol}没有日线数据")
-            continue
-        if _df.empty:
-            continue
-        _df = _df.set_index("dt")
-        data[symbol] = _df["pct_change"]
-    df = pl.DataFrame(data=data)
-    top15in3M = set()
-    for dt, row in df.iterrows():
-        row = row.dropna()
-        codes = row.nlargest(top_n, keep="all")
-        top15 = codes.index.tolist()
-        top15in3M = top15in3M.union(top15)
-    logger.debug(f"最近{m}个月上过排行榜前{top_n}的概念：")
-    logger.debug(top15in3M)
-    return top15in3M
-
-
 def get_stocks_of_index(collection_name, index_symbol, dt):
     """
     获取截止{dt}时的概念或指数的成分股
@@ -198,10 +81,10 @@ def _get_indexes_of_stock(sub_df):
         if row["op"] == 1:
             if row["index_code"] in exclude_concept:
                 continue
-            indexes.add(row["stock_code"])
+            indexes.add(row["index_code"])
         else:
             try:
-                indexes.remove(row["stock_code"])
+                indexes.remove(row["index_code"])
             except KeyError:
                 pass
     return list(indexes)
@@ -230,7 +113,9 @@ def include_in_ths_concepts(stock_list, dt, concept_codes, logger):
     ret = []
     df = pl.DataFrame(mongo_get_data(dbname, "constituent_ths_index"))
     for stock in stock_list:
-        sub_df = df.filter((pl.col("tradedate") <= dt) & (pl.col("stock_code") == stock))
+        sub_df = df.filter(
+            (pl.col("tradedate") <= dt) & (pl.col("stock_code") == stock)
+        )
         concepts = _get_indexes_of_stock(sub_df)
         found = False
         for one_c in concepts:
@@ -250,7 +135,9 @@ def top_concepts_of_stocks(stock_list, dt, limit=None):
     df = pl.DataFrame(mongo_get_data(dbname, "constituent_ths_index"))
     concepts_count = defaultdict(int)
     for stock in stock_list:
-        sub_df = df.filter((pl.col("tradedate") <= dt) & (pl.col("stock_code") == stock))
+        sub_df = df.filter(
+            (pl.col("tradedate") <= dt) & (pl.col("stock_code") == stock)
+        )
         concepts = _get_indexes_of_stock(sub_df)
         for _c in concepts:
             concepts_count[_c] += 1
@@ -268,7 +155,9 @@ def get_indexes_of_stocks(stock_list, dt):
     df = pl.DataFrame(mongo_get_data(dbname, "constituent_ths_index"))
     all_concepts = {}
     for stock in stock_list:
-        sub_df = df.filter((pl.col("tradedate") <= dt) & (pl.col("stock_code") == stock))
+        sub_df = df.filter(
+            (pl.col("tradedate") <= dt) & (pl.col("stock_code") == stock)
+        )
         concepts = _get_indexes_of_stock(sub_df)
         all_concepts[stock] = concepts
     return all_concepts
@@ -281,8 +170,7 @@ def ths_hot_stocks(top_n, dt):
     hot_stocks = pl.DataFrame(
         mongo_get_data(dbname, "hot_stocks_ths", query={"date": dt})
     )
-    hot_stocks = hot_stocks.nsmallest(top_n, "order", keep="first")
-    return hot_stocks
+    return hot_stocks.bottom_k(top_n, by="order")
 
 
 def get_finance_data(tablename, fields) -> pl.DataFrame:
@@ -304,7 +192,10 @@ def get_finance_data(tablename, fields) -> pl.DataFrame:
     if df.is_empty():
         return df
     # drop duplicates of finance_data
-    df = df.with_columns(pl.col("f_ann_date").cast(pl.Datetime("ms")), pl.col("end_date").cast(pl.Datetime("ms")))
+    df = df.with_columns(
+        pl.col("f_ann_date").cast(pl.Datetime("ms")),
+        pl.col("end_date").cast(pl.Datetime("ms")),
+    )
     df = df.sort(["ts_code", "f_ann_date", "end_date"], maintain_order=True)
     df = df.filter(
         (pl.col("ts_code") != pl.col("ts_code").shift(1))
@@ -331,7 +222,28 @@ def merge_finance_data(*data) -> Union[pl.DataFrame, None]:
             and right is not None
             and not right.is_empty()
         ):
-            df = left.join(right, on=["ts_code", "f_ann_date", "end_date"], how="full", coalesce=True)
+            df = left.join(
+                right,
+                on=["ts_code", "f_ann_date", "end_date"],
+                how="full",
+                coalesce=True,
+            )
             return df.sort(["ts_code", "f_ann_date", "end_date"], maintain_order=True)
         else:
             return None
+
+
+if __name__ == "__main__":
+    from quantdata import mongo_connect, mongo_close
+    from datetime import datetime
+
+    mongo_connect("localhost")
+    try:
+        dt = datetime(2025, 11, 21)
+        print(get_indexes_of_stocks(["002493.SZ", "600605.SH"], dt))
+        # print(get_ths_concepts_names())
+        hot_stocks = ths_hot_stocks(50, dt)
+        hot_stock_codes = set(hot_stocks["code"].to_list())
+        top_concepts_of_stocks(hot_stock_codes, dt, limit=6)
+    finally:
+        mongo_close()
